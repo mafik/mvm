@@ -1,34 +1,62 @@
 package mvm
 
 import (
-	"errors"
+	"bytes"
 	"fmt"
+	"io/ioutil"
 	"os"
 )
 
-var TextType Type = Type{
-	name: "text",
-	instantiate: func(me *MachineElement) {
-		me.object = make([]byte, 0)
-	},
-}
+func MakeEcho(b *Blueprint, pos Vec2, text string) (*Frame, *Frame) {
+	t := b.Add(&TextType)
+	t.pos = Add(pos, Vec2{-50, 0})
+	t.size = Vec2{100, 50}
+	var buf bytes.Buffer
+	fmt.Fprint(&buf, text)
+	t.Object().priv = buf.Bytes()
 
-var FileName string = "mvm.img"
-var TheVM VM = VM{
-	types: []*Type{&TextType},
+	echo := b.Add(&EchoType)
+	echo.pos = Add(pos, Vec2{100, -50})
+	echo.size = Vec2{100, 50}
+
+	b.links[&Link{b, echo, t, 0, 0}] = true
+	return echo, t
 }
 
 func SetupDefault() {
 	welcome := MakeBlueprint("welcome")
-	welcome.Add(&TextType, 0, 0, true)
-	TheVM.blueprints = append(TheVM.blueprints, welcome)
+	MakeEcho(welcome, Vec2{-100, -50}, "Hello")
+	MakeEcho(welcome, Vec2{100, 50}, "world!")
+
+	TheVM.Blueprints[welcome] = true
+	TheVM.ActiveBlueprint = welcome
 }
 
+var FileName string = "mvm.img"
+
 func LoadImage() error {
-	if _, err := os.Stat(FileName); os.IsNotExist(err) {
+	byte_slice, err := ioutil.ReadFile(FileName)
+	if err != nil {
 		fmt.Printf("'%s' not found - loading the default VM image\n", FileName)
 		SetupDefault()
 		return nil
 	}
-	return errors.New("Not implemented")
+	ble, err := Unflatten(byte_slice)
+	if err != nil {
+		return err
+	}
+	TheVM = ble.(*VM)
+	return nil
+}
+
+func SaveImage() error {
+	bytes, err := Flatten(TheVM)
+	if err != nil {
+		return err
+	}
+	err = ioutil.WriteFile(FileName, bytes, os.ModePerm)
+	if err != nil {
+		return err
+	}
+	return nil
 }
