@@ -1,3 +1,21 @@
+/*
+
+Objective: functions
+Description: object encapsulates some a functionality
+
+Objective: type checking
+Description: functions can express capabilities for their arguments and return values
+
+Q: Why there are Blueprints & Machines? Couldn't we do with Blueprints alone?
+A: No, because then fixing one blueprint wouldn't fix all of it's instances. The
+   user would have to update each one individually.
+
+Q: Do we need "global" objects within blueprints?
+A: ...?
+
+
+*/
+
 package mvm
 
 import (
@@ -48,7 +66,7 @@ func NextOrder(frame *Frame, i int) (order int) {
 // Menu
 var menu *Vec2
 var menu_index int
-var menu_types []*Type
+var menu_types []Type
 
 func (f *Frame) ParamCenter(i int) Vec2 {
 	ret := f.pos
@@ -62,7 +80,7 @@ func Input(e Event) {
 	if f == nil {
 		return
 	}
-	if f.typ == &TextType {
+	if f.typ == TextType {
 		buf := bytes.NewBuffer(f.Object().priv.([]byte))
 		switch e.Key {
 		case "Backspace":
@@ -162,7 +180,7 @@ func ProcessEvent(e Event, updates chan string) {
 			if f == nil {
 				break
 			}
-			if f.typ == &TextType {
+			if f.typ == TextType {
 				Input(e)
 			} else {
 				f.MarkForExecution()
@@ -334,7 +352,7 @@ func Update(updates chan string) {
 			PositionAt(*menu).
 			Add("cancel", menu_index == 0)
 		for i, t := range menu_types {
-			buttons.Add(t.Name, menu_index == i+1)
+			buttons.Add(t.Name(), menu_index == i+1)
 		}
 	}
 
@@ -352,12 +370,12 @@ func (o *Object) Args() Args {
 	args := make(Args)
 	m := o.machine
 	typ := o.frame.typ
-	for i, param := range typ.Parameters {
+	for i, param := range typ.Parameters() {
 		args[param.Name] = make([]*Object, NextOrder(o.frame, i))
 	}
 	for l, _ := range o.frame.blueprint.links {
 		if l.A == o.frame {
-			name := typ.Parameters[l.Param].Name
+			name := typ.Parameters()[l.Param].Name
 			args[name][l.Order] = m.objects[l.B]
 		}
 	}
@@ -367,7 +385,7 @@ func (o *Object) Args() Args {
 func (o *Object) Run(events chan Event) {
 	typ := o.frame.typ
 	args := o.Args()
-	fmt.Printf("Running %v...\n", typ.Name)
+	fmt.Printf("Running %v...\n", typ.Name())
 	o.Running = true
 	o.execute = false
 	go func() {

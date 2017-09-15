@@ -22,15 +22,15 @@ func (c *Container) Drag(touch *Touch) Touching {
 
 // Links & Params
 
-var LinkTargetType Type = Type{
-	Name: "",
-	Instantiate: func(me *Object) {
+var LinkTargetType Type = &PrimitiveType{
+	name: "",
+	instantiate: func(me *Object) {
 		me.frame.size = Vec2{0, 0}
 	},
 }
 
 func (b *Blueprint) MakeLinkTarget() *Frame {
-	return b.Add(&LinkTargetType)
+	return b.Add(LinkTargetType)
 }
 
 func (ParamLayer) Drag(t *Touch) Touching {

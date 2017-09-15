@@ -64,7 +64,8 @@ var Pointer Touch
 // TODO: Rename to FindFrameBelow
 func (t TouchSnapshot) PointedFrame() *Frame {
 	for frame, _ := range TheVM.ActiveBlueprint.frames {
-		if frame.typ == &LinkTargetType {
+		// TODO: Make it a Type method
+		if frame.typ == LinkTargetType {
 			continue
 		}
 		if frame.HitTest(t.Global) {
@@ -78,7 +79,7 @@ func (t TouchSnapshot) PointedFrame() *Frame {
 func (t TouchSnapshot) PointedParam() (*Frame, int) {
 	blueprint := TheVM.ActiveBlueprint
 	for e, _ := range blueprint.frames {
-		for i, _ := range e.typ.Parameters {
+		for i, _ := range e.typ.Parameters() {
 			if CircleClicked(e.ParamCenter(i), t.Global) {
 				return e, i
 			}

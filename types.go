@@ -48,10 +48,9 @@ type Link struct {
 
 type Frame struct {
 	blueprint *Blueprint
-	typ       *Type
+	typ       Type
 	pos       Vec2
 	size      Vec2
-	global    bool
 }
 
 type Args map[string][]*Object
@@ -63,17 +62,50 @@ type Parameter struct {
 	Output   bool
 }
 
-type Type struct {
-	Name        string
-	Parameters  []Parameter
-	Instantiate func(*Object)
-	Run         func(Args)
-	String      func(interface{}) string
+type Type interface {
+	Name() string
+	Parameters() []Parameter
+	Instantiate(*Object)
+	Run(Args)
+	String(interface{}) string
+}
+
+type PrimitiveType struct {
+	name        string
+	parameters  []Parameter
+	instantiate func(*Object)
+	run         func(Args)
+	string      func(interface{}) string
+}
+
+func (t *PrimitiveType) Name() string {
+	return t.name
+}
+
+func (t *PrimitiveType) Parameters() []Parameter {
+	return t.parameters
+}
+
+func (t *PrimitiveType) Instantiate(o *Object) {
+	if t.instantiate != nil {
+		t.instantiate(o)
+	}
+}
+
+func (t *PrimitiveType) Run(args Args) {
+	t.run(args)
+}
+
+func (t *PrimitiveType) String(i interface{}) string {
+	if t.string != nil {
+		return t.string(i)
+	} else {
+		return fmt.Sprintf("%#v", i)
+	}
 }
 
 type Machine struct {
-	blueprint *Blueprint
-	objects   map[*Frame]*Object
+	objects map[*Frame]*Object
 }
 
 type Object struct {
@@ -96,20 +128,18 @@ func MakeBlueprint(name string) *Blueprint {
 		links:  make(map[*Link]bool),
 	}
 	bp.active_machine = &Machine{
-		blueprint: bp,
-		objects:   make(map[*Frame]*Object),
+		objects: make(map[*Frame]*Object),
 	}
 	bp.machines = map[*Machine]bool{bp.active_machine: true}
 	return bp
 }
 
-func (bp *Blueprint) Add(typ *Type) *Frame {
+func (bp *Blueprint) Add(typ Type) *Frame {
 	frame := &Frame{
 		blueprint: bp,
 		typ:       typ,
 		pos:       Vec2{0, 0},
 		size:      Vec2{100, 100},
-		global:    true,
 	}
 	bp.frames[frame] = true
 	m := bp.active_machine
@@ -117,9 +147,7 @@ func (bp *Blueprint) Add(typ *Type) *Frame {
 		machine: m,
 		frame:   frame,
 	}
-	if typ.Instantiate != nil {
-		typ.Instantiate(object)
-	}
+	typ.Instantiate(object)
 	m.objects[frame] = object
 	return frame
 }
@@ -182,7 +210,7 @@ func (link *Link) Delete() {
 
 func (link *Link) AppendWidget(widgets *Widgets) {
 	line := widgets.Line(link.StartPos(), link.EndPos())
-	if link.A.typ.Parameters[link.Param].Output {
+	if link.A.typ.Parameters()[link.Param].Output {
 		line.Start = MakeCircle(param_r/4, "#000")
 		line.End = MakeArrow()
 	} else {

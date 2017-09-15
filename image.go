@@ -8,19 +8,19 @@ import (
 )
 
 func MakeEcho(b *Blueprint, pos Vec2, text string) (*Frame, *Frame) {
-	t := b.Add(&TextType)
+	t := b.Add(TextType)
 	t.pos = Add(pos, Vec2{-50, 0})
 	t.size = Vec2{100, 50}
 	var buf bytes.Buffer
 	fmt.Fprint(&buf, text)
 	t.Object().priv = buf.Bytes()
 
-	echo := b.Add(&EchoType)
-	echo.pos = Add(pos, Vec2{100, -50})
-	echo.size = Vec2{100, 50}
+	exec := b.Add(ExecType)
+	exec.pos = Add(pos, Vec2{100, -50})
+	exec.size = Vec2{100, 50}
 
-	b.links[&Link{b, echo, t, 0, 0}] = true
-	return echo, t
+	b.links[&Link{b, exec, t, 0, 0}] = true
+	return exec, t
 }
 
 func SetupDefault() {

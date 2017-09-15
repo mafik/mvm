@@ -167,20 +167,18 @@ type FrameGob struct {
 	Type      string
 	Pos       Vec2
 	Size      Vec2
-	Global    bool
 }
 
 func (gob FrameGob) Ungob() Gobbable {
-	return &Frame{nil, Types[gob.Type], gob.Pos, gob.Size, gob.Global}
+	return &Frame{nil, Types[gob.Type], gob.Pos, gob.Size}
 }
 
 func (frame *Frame) Gob(s Serializer) Gob {
 	return FrameGob{
 		Blueprint: s.Id(frame.blueprint),
-		Type:      frame.typ.Name,
+		Type:      frame.typ.Name(),
 		Pos:       frame.pos,
 		Size:      frame.size,
-		Global:    frame.global,
 	}
 }
 
@@ -217,11 +215,10 @@ type MachineGob struct {
 	Objects   map[int]int
 }
 
-func (gob MachineGob) Ungob() Gobbable { return &Machine{nil, make(map[*Frame]*Object)} }
+func (gob MachineGob) Ungob() Gobbable { return &Machine{make(map[*Frame]*Object)} }
 
 func (mach *Machine) Gob(s Serializer) Gob {
 	gob := MachineGob{Objects: make(map[int]int)}
-	gob.Blueprint = s.Id(mach.blueprint)
 	for frame, obj := range mach.objects {
 		gob.Objects[s.Id(frame)] = s.Id(obj)
 	}
@@ -230,7 +227,6 @@ func (mach *Machine) Gob(s Serializer) Gob {
 
 func (m *Machine) Connect(d Deserializer, gob Gob) {
 	mGob := gob.(MachineGob)
-	m.blueprint = d.Get(mGob.Blueprint).(*Blueprint)
 	for f, o := range mGob.Objects {
 		m.objects[d.Get(f).(*Frame)] = d.Get(o).(*Object)
 	}

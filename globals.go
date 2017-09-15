@@ -6,32 +6,21 @@ import (
 	"os/exec"
 )
 
-var TextType Type = Type{
-	Name: "text",
-	Instantiate: func(me *Object) {
+var TextType Type = &PrimitiveType{
+	name: "text",
+	instantiate: func(me *Object) {
 		var b bytes.Buffer
 		fmt.Fprint(&b, "Hello world!")
 		me.priv = b.Bytes()
 	},
-	String: func(i interface{}) string {
+	string: func(i interface{}) string {
 		return string(i.([]byte))
 	},
 }
 
-var EchoType Type = Type{
-	Name: "echo",
-	Run: func(args Args) {
-		fmt.Printf("Echo: \"%s\"\n", args["text"][0].priv)
-	},
-	Parameters: []Parameter{
-		{Name: "text", Typ: &TextType},
-		//{Name: "then", Runnable: true},
-	},
-}
-
-var FormatType Type = Type{
-	Name: "format",
-	Run: func(args Args) {
+var FormatType Type = &PrimitiveType{
+	name: "format",
+	run: func(args Args) {
 		format := string(args["fmt"][0].priv.([]byte))
 		var fmt_args []interface{}
 		for _, o := range args["args"] {
@@ -41,17 +30,17 @@ var FormatType Type = Type{
 		fmt.Fprintf(&buf, format, fmt_args...)
 		args["output"][0].priv = buf.Bytes()
 	},
-	Parameters: []Parameter{
+	parameters: []Parameter{
 		{Name: "output", Typ: &TextType},
 		{Name: "fmt", Typ: &TextType},
 		{Name: "args"},
 	},
 }
 
-var CommandType Type = Type{
-	Name: "command",
-	Run: func(args Args) {
-		name := TextType.String(args["name"][0].priv)
+var ExecType Type = &PrimitiveType{
+	name: "exec",
+	run: func(args Args) {
+		name := TextType.String(args["command"][0].priv)
 		var cmd_args []string
 		for _, o := range args["args"] {
 			cmd_args = append(cmd_args, TextType.String(o.priv))
@@ -65,19 +54,18 @@ var CommandType Type = Type{
 		}
 		args["stdout"][0].priv = out
 	},
-	Parameters: []Parameter{
-		{Name: "name", Typ: &TextType},
+	parameters: []Parameter{
+		{Name: "command", Typ: &TextType},
 		{Name: "args", Typ: &TextType},
 		{Name: "stdout", Typ: &TextType, Output: true},
 		{Name: "stderr", Typ: &TextType, Output: true},
 	},
 }
 
-var Types map[string]*Type = map[string]*Type{
-	"format":  &FormatType,
-	"text":    &TextType,
-	"echo":    &EchoType,
-	"command": &CommandType,
+var Types map[string]Type = map[string]Type{
+	"format": FormatType,
+	"text":   TextType,
+	"exec":   ExecType,
 }
 
 var TheVM *VM = &VM{Blueprints: make(map[*Blueprint]bool)}

@@ -2,7 +2,6 @@ package mvm
 
 import (
 	"encoding/json"
-	"fmt"
 )
 
 var margin float64 = 5.0
@@ -177,16 +176,12 @@ func (f FrameLayer) Widgets() (widgets Widgets) {
 			widgets.Rect(frame.pos, Add(frame.size, Vec2{10, 10}), "#f00")
 		}
 		var s string
-		if typ.String != nil {
-			s = typ.String(obj.priv)
-		} else {
-			s = fmt.Sprintf("%#v", obj.priv)
-		}
+		s = typ.String(obj.priv)
 		w := widgets.Button(s, frame.pos, frame.size, "#000", "#fff")
-		if typ == &TextType {
+		if typ == TextType {
 			w.Text.Caret = true
 		}
-		widgets.Text(typ.Name, Sub(frame.pos, Scale(frame.size, .5)))
+		widgets.Text(typ.Name(), Sub(frame.pos, Scale(frame.size, .5)))
 		if obj.Running {
 			widgets.Hourglass(Add(frame.pos, Vec2{frame.size.X / 2, -frame.size.Y / 2}), "#f00")
 		}
@@ -197,11 +192,11 @@ func (f FrameLayer) Widgets() (widgets Widgets) {
 func (p ParamLayer) Widgets() (widgets Widgets) {
 	for frame, _ := range TheVM.ActiveBlueprint.frames {
 		typ := frame.typ
-		if param_count := len(typ.Parameters); param_count > 0 {
+		if param_count := len(typ.Parameters()); param_count > 0 {
 			widgets.Line(
 				Sub(frame.ParamCenter(0), Vec2{0, param_r + margin}),
 				frame.ParamCenter(param_count-1))
-			for j, param := range typ.Parameters {
+			for j, param := range typ.Parameters() {
 				pos := frame.ParamCenter(j)
 				widgets.Circle(pos, param_r, "#fff")
 				pos.Y -= 1
