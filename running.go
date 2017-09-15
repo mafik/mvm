@@ -371,11 +371,11 @@ func (o *Object) Args() Args {
 	m := o.machine
 	typ := o.frame.typ
 	for i, param := range typ.Parameters() {
-		args[param.Name] = make([]*Object, NextOrder(o.frame, i))
+		args[param.Name()] = make([]*Object, NextOrder(o.frame, i))
 	}
 	for l, _ := range o.frame.blueprint.links {
 		if l.A == o.frame {
-			name := typ.Parameters()[l.Param].Name
+			name := typ.Parameters()[l.Param].Name()
 			args[name][l.Order] = m.objects[l.B]
 		}
 	}

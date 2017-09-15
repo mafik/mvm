@@ -25,6 +25,8 @@ func (vm VM) OrderedBlueprints() ([]*Blueprint, int) {
 	return bl, active
 }
 
+// TODO: add the ability to "publish blueprint internal frames"
+
 type Blueprint struct {
 	name           string
 	frames         map[*Frame]bool
@@ -55,11 +57,10 @@ type Frame struct {
 
 type Args map[string][]*Object
 
-type Parameter struct {
-	Name     string
-	Typ      *Type
-	Runnable bool
-	Output   bool
+type Parameter interface {
+	Name() string
+	Typ() Type
+	Output() bool
 }
 
 type Type interface {
@@ -68,40 +69,6 @@ type Type interface {
 	Instantiate(*Object)
 	Run(Args)
 	String(interface{}) string
-}
-
-type PrimitiveType struct {
-	name        string
-	parameters  []Parameter
-	instantiate func(*Object)
-	run         func(Args)
-	string      func(interface{}) string
-}
-
-func (t *PrimitiveType) Name() string {
-	return t.name
-}
-
-func (t *PrimitiveType) Parameters() []Parameter {
-	return t.parameters
-}
-
-func (t *PrimitiveType) Instantiate(o *Object) {
-	if t.instantiate != nil {
-		t.instantiate(o)
-	}
-}
-
-func (t *PrimitiveType) Run(args Args) {
-	t.run(args)
-}
-
-func (t *PrimitiveType) String(i interface{}) string {
-	if t.string != nil {
-		return t.string(i)
-	} else {
-		return fmt.Sprintf("%#v", i)
-	}
 }
 
 type Machine struct {
@@ -210,7 +177,7 @@ func (link *Link) Delete() {
 
 func (link *Link) AppendWidget(widgets *Widgets) {
 	line := widgets.Line(link.StartPos(), link.EndPos())
-	if link.A.typ.Parameters()[link.Param].Output {
+	if link.A.typ.Parameters()[link.Param].Output() {
 		line.Start = MakeCircle(param_r/4, "#000")
 		line.End = MakeArrow()
 	} else {

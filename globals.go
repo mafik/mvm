@@ -6,6 +6,58 @@ import (
 	"os/exec"
 )
 
+type FixedParameter struct {
+	name   string
+	typ    Type
+	output bool
+}
+
+func (p *FixedParameter) Name() string {
+	return p.name
+}
+
+func (p *FixedParameter) Typ() Type {
+	return p.typ
+}
+
+func (p *FixedParameter) Output() bool {
+	return p.output
+}
+
+type PrimitiveType struct {
+	name        string
+	parameters  []Parameter
+	instantiate func(*Object)
+	run         func(Args)
+	string      func(interface{}) string
+}
+
+func (t *PrimitiveType) Name() string {
+	return t.name
+}
+
+func (t *PrimitiveType) Parameters() []Parameter {
+	return t.parameters
+}
+
+func (t *PrimitiveType) Instantiate(o *Object) {
+	if t.instantiate != nil {
+		t.instantiate(o)
+	}
+}
+
+func (t *PrimitiveType) Run(args Args) {
+	t.run(args)
+}
+
+func (t *PrimitiveType) String(i interface{}) string {
+	if t.string != nil {
+		return t.string(i)
+	} else {
+		return fmt.Sprintf("%#v", i)
+	}
+}
+
 var TextType Type = &PrimitiveType{
 	name: "text",
 	instantiate: func(me *Object) {
@@ -31,9 +83,9 @@ var FormatType Type = &PrimitiveType{
 		args["output"][0].priv = buf.Bytes()
 	},
 	parameters: []Parameter{
-		{Name: "output", Typ: &TextType},
-		{Name: "fmt", Typ: &TextType},
-		{Name: "args"},
+		&FixedParameter{name: "output", typ: TextType},
+		&FixedParameter{name: "fmt", typ: TextType},
+		&FixedParameter{name: "args"},
 	},
 }
 
@@ -55,10 +107,10 @@ var ExecType Type = &PrimitiveType{
 		args["stdout"][0].priv = out
 	},
 	parameters: []Parameter{
-		{Name: "command", Typ: &TextType},
-		{Name: "args", Typ: &TextType},
-		{Name: "stdout", Typ: &TextType, Output: true},
-		{Name: "stderr", Typ: &TextType, Output: true},
+		&FixedParameter{name: "command", typ: TextType},
+		&FixedParameter{name: "args", typ: TextType},
+		&FixedParameter{name: "stdout", typ: TextType, output: true},
+		&FixedParameter{name: "stderr", typ: TextType, output: true},
 	},
 }
 

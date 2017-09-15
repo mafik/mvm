@@ -201,7 +201,7 @@ func (p ParamLayer) Widgets() (widgets Widgets) {
 				widgets.Circle(pos, param_r, "#fff")
 				pos.Y -= 1
 				pos.X += param_r + margin
-				widgets.Text(param.Name, pos)
+				widgets.Text(param.Name(), pos)
 			}
 		}
 	}
