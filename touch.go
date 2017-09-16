@@ -1,7 +1,5 @@
 package mvm
 
-import "fmt"
-
 type TouchSnapshot struct {
 	Local  Vec2
 	Global Vec2
@@ -16,12 +14,10 @@ type Touch struct {
 
 func (t *Touch) BeginTouching(source string, f func(*Touch) Touching) {
 	if t.Touched != nil {
-		fmt.Println("Something is already touched!") // TODO: delete
 		return
 	}
 	touched := f(t)
 	if touched == nil {
-		fmt.Println("Touched nothing!") // TODO: delete
 		return
 	}
 	t.Touched = touched
@@ -61,13 +57,8 @@ type Container struct {
 
 var Pointer Touch
 
-// TODO: Rename to FindFrameBelow
-func (t TouchSnapshot) PointedFrame() *Frame {
-	for frame, _ := range TheVM.ActiveBlueprint.frames {
-		// TODO: Make it a Type method
-		if frame.typ == LinkTargetType {
-			continue
-		}
+func (t TouchSnapshot) FindFrameBelow() *Frame {
+	for _, frame := range TheVM.ActiveBlueprint.Frames() {
 		if frame.HitTest(t.Global) {
 			return frame
 		}
@@ -75,11 +66,16 @@ func (t TouchSnapshot) PointedFrame() *Frame {
 	return nil
 }
 
-// TODO: Rename to FindParamBelow
-func (t TouchSnapshot) PointedParam() (*Frame, int) {
+func (t TouchSnapshot) FindObjectBelow() *Object {
+	machine := TheVM.ActiveBlueprint.active_machine
+	frame := t.FindFrameBelow()
+	return machine.objects[frame]
+}
+
+func (t TouchSnapshot) FindParamBelow() (*Frame, int) {
 	blueprint := TheVM.ActiveBlueprint
-	for e, _ := range blueprint.frames {
-		for i, _ := range e.typ.Parameters() {
+	for _, e := range blueprint.Frames() {
+		for i, _ := range e.Object().typ.Parameters() {
 			if CircleClicked(e.ParamCenter(i), t.Global) {
 				return e, i
 			}

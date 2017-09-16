@@ -10,36 +10,43 @@ type VM struct {
 	ActiveBlueprint *Blueprint
 }
 
-func (vm VM) OrderedBlueprints() ([]*Blueprint, int) {
-	var bl ByName
-	for b, _ := range vm.Blueprints {
-		bl = append(bl, b)
-	}
-	sort.Sort(bl)
-	var active int
-	for i, b := range bl {
-		if b == vm.ActiveBlueprint {
-			active = i
-		}
-	}
-	return bl, active
-}
-
-// TODO: add the ability to "publish blueprint internal frames"
-
 type Blueprint struct {
 	name           string
-	frames         map[*Frame]bool
+	frames_        map[*Frame]bool
 	links          map[*Link]bool
 	machines       map[*Machine]bool
 	active_machine *Machine
 }
 
-type ByName []*Blueprint
+func (b *Blueprint) Name() string {
+	return b.name
+}
 
-func (b ByName) Len() int           { return len(b) }
-func (b ByName) Swap(i, j int)      { b[i], b[j] = b[j], b[i] }
-func (b ByName) Less(i, j int) bool { return b[i].name < b[j].name }
+func (b *Blueprint) Frames() (out []*Frame) {
+	for frame, _ := range b.frames_ {
+		is_link := frame.Object().typ == LinkTargetType
+		if !is_link {
+			out = append(out, frame)
+		}
+	}
+	return out
+}
+
+func (b *Blueprint) Parameters() []Parameter {
+	return nil
+}
+
+func (b *Blueprint) Instantiate(o *Object) {
+	o.priv = &Machine{}
+}
+
+func (b *Blueprint) Run(args Args) {
+	panic("unimplemented")
+}
+
+func (b *Blueprint) String(interface{}) string {
+	return fmt.Sprintf("%d frames", len(b.Frames()))
+}
 
 type Link struct {
 	Blueprint *Blueprint
@@ -50,9 +57,9 @@ type Link struct {
 
 type Frame struct {
 	blueprint *Blueprint
-	typ       Type
 	pos       Vec2
 	size      Vec2
+	Name      string
 }
 
 type Args map[string][]*Object
@@ -80,8 +87,30 @@ type Object struct {
 	frame   *Frame
 	execute bool
 	Running bool
+	typ     Type
 	priv    interface{}
 }
+
+func (vm VM) OrderedBlueprints() ([]*Blueprint, int) {
+	var bl ByName
+	for b, _ := range vm.Blueprints {
+		bl = append(bl, b)
+	}
+	sort.Sort(bl)
+	var active int
+	for i, b := range bl {
+		if b == vm.ActiveBlueprint {
+			active = i
+		}
+	}
+	return bl, active
+}
+
+type ByName []*Blueprint
+
+func (b ByName) Len() int           { return len(b) }
+func (b ByName) Swap(i, j int)      { b[i], b[j] = b[j], b[i] }
+func (b ByName) Less(i, j int) bool { return b[i].name < b[j].name }
 
 func (o *Object) MarkForExecution() {
 	o.execute = true
@@ -90,9 +119,9 @@ func (o *Object) MarkForExecution() {
 
 func MakeBlueprint(name string) *Blueprint {
 	bp := &Blueprint{
-		name:   name,
-		frames: make(map[*Frame]bool),
-		links:  make(map[*Link]bool),
+		name:    name,
+		frames_: make(map[*Frame]bool),
+		links:   make(map[*Link]bool),
 	}
 	bp.active_machine = &Machine{
 		objects: make(map[*Frame]*Object),
@@ -104,15 +133,15 @@ func MakeBlueprint(name string) *Blueprint {
 func (bp *Blueprint) Add(typ Type) *Frame {
 	frame := &Frame{
 		blueprint: bp,
-		typ:       typ,
 		pos:       Vec2{0, 0},
 		size:      Vec2{100, 100},
 	}
-	bp.frames[frame] = true
+	bp.frames_[frame] = true
 	m := bp.active_machine
 	object := &Object{
 		machine: m,
 		frame:   frame,
+		typ:     typ,
 	}
 	typ.Instantiate(object)
 	m.objects[frame] = object
@@ -130,7 +159,7 @@ func (f *Frame) Delete() {
 			delete(b.links, link)
 		}
 	}
-	delete(b.frames, f)
+	delete(b.frames_, f)
 	for m, _ := range b.machines {
 		delete(m.objects, f)
 	}
@@ -177,7 +206,7 @@ func (link *Link) Delete() {
 
 func (link *Link) AppendWidget(widgets *Widgets) {
 	line := widgets.Line(link.StartPos(), link.EndPos())
-	if link.A.typ.Parameters()[link.Param].Output() {
+	if link.A.Object().typ.Parameters()[link.Param].Output() {
 		line.Start = MakeCircle(param_r/4, "#000")
 		line.End = MakeArrow()
 	} else {

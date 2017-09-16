@@ -1,21 +1,3 @@
-/*
-
-Objective: functions
-Description: object encapsulates some a functionality
-
-Objective: type checking
-Description: functions can express capabilities for their arguments and return values
-
-Q: Why there are Blueprints & Machines? Couldn't we do with Blueprints alone?
-A: No, because then fixing one blueprint wouldn't fix all of it's instances. The
-   user would have to update each one individually.
-
-Q: Do we need "global" objects within blueprints?
-A: ...?
-
-
-*/
-
 package mvm
 
 import (
@@ -43,12 +25,14 @@ var nav bool
 
 var GUI Container = Container{
 	elements: []interface{}{
+		HighlightLayer{},
 		FrameLayer{},
 		ParamLayer{},
 		LinkLayer{},
 	},
 }
 
+type HighlightLayer struct{}
 type FrameLayer struct{}
 type ParamLayer struct{}
 type LinkLayer struct{}
@@ -76,12 +60,12 @@ func (f *Frame) ParamCenter(i int) Vec2 {
 }
 
 func Input(e Event) {
-	f := Pointer.PointedFrame()
-	if f == nil {
+	o := Pointer.FindObjectBelow()
+	if o == nil {
 		return
 	}
-	if f.typ == TextType {
-		buf := bytes.NewBuffer(f.Object().priv.([]byte))
+	if o.typ == TextType {
+		buf := bytes.NewBuffer(o.priv.([]byte))
 		switch e.Key {
 		case "Backspace":
 			cut := true
@@ -96,7 +80,7 @@ func Input(e Event) {
 		default:
 			buf.WriteString(e.Key)
 		}
-		f.Object().priv = buf.Bytes()
+		o.priv = buf.Bytes()
 	}
 }
 
@@ -175,15 +159,19 @@ func ProcessEvent(e Event, updates chan string) {
 			for _, typ := range Types {
 				menu_types = append(menu_types, typ)
 			}
+			blues, _ := TheVM.OrderedBlueprints()
+			for _, b := range blues {
+				menu_types = append(menu_types, b)
+			}
 		case "Enter":
-			f := Pointer.PointedFrame()
-			if f == nil {
+			o := Pointer.FindObjectBelow()
+			if o == nil {
 				break
 			}
-			if f.typ == TextType {
+			if o.typ == TextType {
 				Input(e)
 			} else {
-				f.MarkForExecution()
+				o.MarkForExecution()
 			}
 		case "Delete":
 			GUI.Delete(Pointer)
@@ -321,8 +309,8 @@ func ProcessEvent(e Event, updates chan string) {
 		if menu_index < 0 {
 			menu_index = 0
 		}
-		if menu_index > len(Types) {
-			menu_index = len(Types)
+		if menu_index > len(menu_types) {
+			menu_index = len(menu_types)
 		}
 	}
 }
@@ -333,13 +321,19 @@ func Update(updates chan string) {
 	widgets := Widgets{}
 	for _, l := range GUI.elements {
 		if drawable, ok := l.(Drawable); ok {
-			widgets.slice = append(widgets.slice, drawable.Widgets().slice...)
+			widgets.slice = append(widgets.slice, drawable.Draw().slice...)
+		} else {
+			fmt.Println("Warning: found non-Drawable layer")
 		}
 	}
-	// TODO: Replace with Drawable
-	// if drag != nil {
-	// 	drag.DragHighlight(&widgets)
-	// }
+	blueprints_slice, active_i := TheVM.OrderedBlueprints()
+	for i, bp := range blueprints_slice {
+		widgets.ButtonList().
+			AlignLeft(float64(i)*(button_width+margin)).
+			AlignTop(0).
+			Colors("#000", "#fff", "#444", "#ccc").
+			Add(bp.Name(), i == active_i)
+	}
 	widgets.ButtonList().
 		Dir(-1).
 		AlignLeft(0).
@@ -369,7 +363,7 @@ func Update(updates chan string) {
 func (o *Object) Args() Args {
 	args := make(Args)
 	m := o.machine
-	typ := o.frame.typ
+	typ := o.typ
 	for i, param := range typ.Parameters() {
 		args[param.Name()] = make([]*Object, NextOrder(o.frame, i))
 	}
@@ -383,7 +377,7 @@ func (o *Object) Args() Args {
 }
 
 func (o *Object) Run(events chan Event) {
-	typ := o.frame.typ
+	typ := o.typ
 	args := o.Args()
 	fmt.Printf("Running %v...\n", typ.Name())
 	o.Running = true
@@ -406,29 +400,18 @@ type Event struct {
 }
 
 /*
+TODO
 
-2017-04-30:
-- Command object
-- Asynchronous execution (for long-running commands)
-- Indicator for running
-- Directions for input and Output links
-- Chrome renderer reconnects on restart
-- Order of arguments
-- Numbers on arg lines
+P0
+- Sequencing
+- Blueprint-functions
 
-2017-05-01:
-- Adding and switching blueprints
-
-Todo:
-- Think about using immediate mode interface
-- Display blueprint name
-- Unique names for blueprints
-
-- Show red message if connected type is wrong
-- Minimum & maximum number of arguments
-
-- Browsing machines
-
+P1
+- Highlighting frames with the right type
 - Do a proper menu
+
+P2
+- Minimum & maximum number of arguments
+- Browsing machines
 
 */

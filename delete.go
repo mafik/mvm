@@ -17,7 +17,7 @@ func (c *Container) Delete(touch Touch) Touching {
 }
 
 func (FrameLayer) Delete(t Touch) Touching {
-	deleted := t.PointedFrame()
+	deleted := t.FindFrameBelow()
 	if deleted == nil {
 		return nil
 	}

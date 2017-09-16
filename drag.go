@@ -33,8 +33,12 @@ func (b *Blueprint) MakeLinkTarget() *Frame {
 	return b.Add(LinkTargetType)
 }
 
+func (HighlightLayer) Drag(*Touch) Touching {
+	return nil
+}
+
 func (ParamLayer) Drag(t *Touch) Touching {
-	frame, i := t.PointedParam()
+	frame, i := t.FindParamBelow()
 	if frame == nil {
 		return nil
 	}
@@ -60,26 +64,8 @@ func (l *Link) Move(touch *Touch) {
 	l.B.pos = touch.Global
 }
 
-/* // TODO: Convert to Drawable
-func (drag *LinkDrag) DragHighlight(widgets *Widgets) {
-	link := drag.link
-	param := link.A.typ.Parameters[link.Param]
-	for frame, _ := range link.Blueprint.frames {
-		ok := param.Typ == nil || frame.typ == param.Typ
-		if param.Runnable && frame.typ.Run == nil {
-			ok = false
-		}
-		color := "rgba(0,255,0,0.2)"
-		if !ok {
-			color = "rgba(255,0,0,0.2)"
-		}
-		widgets.Rect(frame.pos, frame.size, color)
-	}
-}
-*/
-
 func (l *Link) End(touch *Touch) {
-	frame := touch.PointedFrame()
+	frame := touch.FindFrameBelow()
 	if frame == nil {
 		l.B.Delete()
 	} else {
@@ -92,7 +78,7 @@ func (l *Link) End(touch *Touch) {
 // Frames
 
 func (FrameLayer) Drag(t *Touch) Touching {
-	frame := t.PointedFrame()
+	frame := t.FindFrameBelow()
 	if frame == nil {
 		return nil
 	}
@@ -138,13 +124,5 @@ func (d *FrameDragging) Move(t *Touch) {
 		e.size.Y = 30
 	}
 }
-
-/* TODO: Convert to Drawable
-func (d *FrameDragging) DragHighlight(widgets *Widgets) {
-	e := d.frame
-	s3 := Scale(e.size, 1/3.0)
-	widgets.Rect(Add(e.pos, Mul(s3, d.cell)), s3, "rgba(0,0,0,0.2)")
-}
-*/
 
 func (*FrameDragging) End(*Touch) {}

@@ -2,12 +2,13 @@ package mvm
 
 import (
 	"encoding/json"
+	"fmt"
 )
 
 var margin float64 = 5.0
 
 type Drawable interface {
-	Widgets() Widgets // TODO: Rename to Draw.
+	Draw() Widgets
 }
 
 type Widget struct {
@@ -78,9 +79,11 @@ func (w *Widgets) Button(text string, pos, size Vec2, fg, bg string) *ButtonWidg
 type ButtonList interface {
 	AlignLeft(float64) ButtonList
 	AlignBottom(float64) ButtonList
+	AlignTop(float64) ButtonList
 	PositionAt(Vec2) ButtonList
 	Add(text string, active bool) ButtonList
 	Dir(dir int) ButtonList
+	Colors(active_bg, active_fg, inactive_bg, inactive_fg string) ButtonList
 }
 
 type ButtonListContext struct {
@@ -94,8 +97,21 @@ func (w *Widgets) ButtonList() ButtonList {
 	return &ButtonListContext{w, Vec2{0, 0}, "#888", "#fff", "#ccc", "#000", 1}
 }
 
+func (c *ButtonListContext) Colors(active_bg, active_fg, inactive_bg, inactive_fg string) ButtonList {
+	c.active_bg = active_bg
+	c.active_fg = active_fg
+	c.inactive_bg = inactive_bg
+	c.inactive_fg = inactive_fg
+	return c
+}
+
 func (c *ButtonListContext) AlignLeft(left float64) ButtonList {
 	c.next.X = left + margin + button_width/2
+	return c
+}
+
+func (c *ButtonListContext) AlignTop(top float64) ButtonList {
+	c.next.Y = top + margin + button_height/2
 	return c
 }
 
@@ -166,12 +182,19 @@ func (w *Widgets) Hourglass(pos Vec2, color string) {
 	w.AppendGlobal("hourglass", pos, &HourglassWidget{color})
 }
 
-func (f FrameLayer) Widgets() (widgets Widgets) {
+func (h HighlightLayer) Draw() (widgets Widgets) {
+	if fd, ok := Pointer.Touched.(*FrameDragging); ok {
+		widgets.Rect(Add(fd.frame.pos, Vec2{margin, margin}), fd.frame.size, "#ccc")
+	}
+	return
+}
+
+func (f FrameLayer) Draw() (widgets Widgets) {
 	blueprint := TheVM.ActiveBlueprint
 	machine := blueprint.active_machine
-	for frame, _ := range blueprint.frames {
+	for _, frame := range blueprint.Frames() {
 		obj := machine.objects[frame]
-		typ := frame.typ
+		typ := obj.typ
 		if obj.execute {
 			widgets.Rect(frame.pos, Add(frame.size, Vec2{10, 10}), "#f00")
 		}
@@ -181,7 +204,8 @@ func (f FrameLayer) Widgets() (widgets Widgets) {
 		if typ == TextType {
 			w.Text.Caret = true
 		}
-		widgets.Text(typ.Name(), Sub(frame.pos, Scale(frame.size, .5)))
+		title := fmt.Sprintf("%s:%s", frame.Name, typ.Name())
+		widgets.Text(title, Sub(frame.pos, Scale(frame.size, .5)))
 		if obj.Running {
 			widgets.Hourglass(Add(frame.pos, Vec2{frame.size.X / 2, -frame.size.Y / 2}), "#f00")
 		}
@@ -189,9 +213,11 @@ func (f FrameLayer) Widgets() (widgets Widgets) {
 	return
 }
 
-func (p ParamLayer) Widgets() (widgets Widgets) {
-	for frame, _ := range TheVM.ActiveBlueprint.frames {
-		typ := frame.typ
+func (p ParamLayer) Draw() (widgets Widgets) {
+	machine := TheVM.ActiveBlueprint.active_machine
+	for _, frame := range TheVM.ActiveBlueprint.Frames() {
+		obj := machine.objects[frame]
+		typ := obj.typ
 		if param_count := len(typ.Parameters()); param_count > 0 {
 			widgets.Line(
 				Sub(frame.ParamCenter(0), Vec2{0, param_r + margin}),
@@ -208,7 +234,7 @@ func (p ParamLayer) Widgets() (widgets Widgets) {
 	return
 }
 
-func (l LinkLayer) Widgets() (widgets Widgets) {
+func (l LinkLayer) Draw() (widgets Widgets) {
 	for param_link, _ := range TheVM.ActiveBlueprint.links {
 		param_link.AppendWidget(&widgets)
 	}
