@@ -37,10 +37,10 @@ type FrameLayer struct{}
 type ParamLayer struct{}
 type LinkLayer struct{}
 
-func NextOrder(frame *Frame, i int) (order int) {
+func NextOrder(frame *Frame, param string) (order int) {
 	blue := frame.blueprint
 	for link, _ := range blue.links {
-		if link.A == frame && link.Param == i {
+		if link.A == frame && link.Param == param {
 			order++
 		}
 	}
@@ -163,7 +163,7 @@ func ProcessEvent(e Event, updates chan string) {
 			for _, b := range blues {
 				menu_types = append(menu_types, b)
 			}
-		case "Enter":
+		case "Space":
 			o := Pointer.FindObjectBelow()
 			if o == nil {
 				break
@@ -175,8 +175,19 @@ func ProcessEvent(e Event, updates chan string) {
 			}
 		case "Delete":
 			GUI.Delete(Pointer)
-		case "Space":
-			Input(e)
+		case "Enter":
+			o := Pointer.FindObjectBelow()
+			if o == nil {
+				break
+			}
+			if blueprint, ok := o.typ.(*Blueprint); ok {
+				TheVM.ActiveBlueprint = blueprint
+				blueprint.active_machine = o.priv.(*Machine)
+				//Input(e)
+				fmt.Println("It's a blueprint!")
+			} else {
+				Input(e)
+			}
 		case "Backspace":
 			Input(e)
 		case "KeyQ":
@@ -363,14 +374,9 @@ func Update(updates chan string) {
 func (o *Object) Args() Args {
 	args := make(Args)
 	m := o.machine
-	typ := o.typ
-	for i, param := range typ.Parameters() {
-		args[param.Name()] = make([]*Object, NextOrder(o.frame, i))
-	}
 	for l, _ := range o.frame.blueprint.links {
 		if l.A == o.frame {
-			name := typ.Parameters()[l.Param].Name()
-			args[name][l.Order] = m.objects[l.B]
+			args[l.Param] = append(args[l.Param], m.objects[l.B])
 		}
 	}
 	return args

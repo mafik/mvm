@@ -2,7 +2,6 @@ package mvm
 
 import (
 	"encoding/json"
-	"fmt"
 )
 
 var margin float64 = 5.0
@@ -191,38 +190,37 @@ func (h HighlightLayer) Draw() (widgets Widgets) {
 
 func (f FrameLayer) Draw() (widgets Widgets) {
 	blueprint := TheVM.ActiveBlueprint
-	machine := blueprint.active_machine
 	for _, frame := range blueprint.Frames() {
-		obj := machine.objects[frame]
-		typ := obj.typ
-		if obj.execute {
-			widgets.Rect(frame.pos, Add(frame.size, Vec2{10, 10}), "#f00")
+		title := frame.Title()
+		obj := frame.Object()
+		typ := frame.Type()
+		s := ""
+		if obj != nil {
+			s = typ.String(obj.priv)
+			if obj.execute {
+				widgets.Rect(frame.pos, Add(frame.size, Vec2{10, 10}), "#f00")
+			}
+			if obj.Running {
+				widgets.Hourglass(Add(frame.pos, Vec2{frame.size.X / 2, -frame.size.Y / 2}), "#f00")
+			}
 		}
-		var s string
-		s = typ.String(obj.priv)
 		w := widgets.Button(s, frame.pos, frame.size, "#000", "#fff")
 		if typ == TextType {
 			w.Text.Caret = true
 		}
-		title := fmt.Sprintf("%s:%s", frame.Name, typ.Name())
 		widgets.Text(title, Sub(frame.pos, Scale(frame.size, .5)))
-		if obj.Running {
-			widgets.Hourglass(Add(frame.pos, Vec2{frame.size.X / 2, -frame.size.Y / 2}), "#f00")
-		}
 	}
 	return
 }
 
 func (p ParamLayer) Draw() (widgets Widgets) {
-	machine := TheVM.ActiveBlueprint.active_machine
 	for _, frame := range TheVM.ActiveBlueprint.Frames() {
-		obj := machine.objects[frame]
-		typ := obj.typ
-		if param_count := len(typ.Parameters()); param_count > 0 {
+		params := frame.Parameters()
+		if param_count := len(params); param_count > 0 {
 			widgets.Line(
 				Sub(frame.ParamCenter(0), Vec2{0, param_r + margin}),
 				frame.ParamCenter(param_count-1))
-			for j, param := range typ.Parameters() {
+			for j, param := range params {
 				pos := frame.ParamCenter(j)
 				widgets.Circle(pos, param_r, "#fff")
 				pos.Y -= 1

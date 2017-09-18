@@ -72,16 +72,16 @@ func (t TouchSnapshot) FindObjectBelow() *Object {
 	return machine.objects[frame]
 }
 
-func (t TouchSnapshot) FindParamBelow() (*Frame, int) {
+func (t TouchSnapshot) FindParamBelow() (*Frame, string) {
 	blueprint := TheVM.ActiveBlueprint
-	for _, e := range blueprint.Frames() {
-		for i, _ := range e.Object().typ.Parameters() {
-			if CircleClicked(e.ParamCenter(i), t.Global) {
-				return e, i
+	for _, f := range blueprint.Frames() {
+		for i, param := range f.Parameters() {
+			if CircleClicked(f.ParamCenter(i), t.Global) {
+				return f, param.Name()
 			}
 		}
 	}
-	return nil, 0
+	return nil, ""
 }
 
 func CircleClicked(pos Vec2, touch Vec2) bool {

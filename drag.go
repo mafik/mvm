@@ -38,12 +38,12 @@ func (HighlightLayer) Drag(*Touch) Touching {
 }
 
 func (ParamLayer) Drag(t *Touch) Touching {
-	frame, i := t.FindParamBelow()
+	frame, param := t.FindParamBelow()
 	if frame == nil {
 		return nil
 	}
 	blue := frame.blueprint
-	link := &Link{blue, frame, blue.MakeLinkTarget(), i, NextOrder(frame, i)}
+	link := &Link{blue, frame, blue.MakeLinkTarget(), param, NextOrder(frame, param)}
 	link.B.pos = t.Global
 	blue.links[link] = true
 	return link

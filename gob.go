@@ -188,7 +188,9 @@ func (frame *Frame) Connect(d Deserializer, gob Gob) {
 }
 
 type LinkGob struct {
-	Blueprint, A, B, Param, Order int
+	Blueprint, A, B int
+	Param           string
+	Order           int
 }
 
 func (gob LinkGob) Ungob() Gobbable { return &Link{nil, nil, nil, gob.Param, gob.Order} }

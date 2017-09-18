@@ -24,7 +24,7 @@ func (b *Blueprint) Name() string {
 
 func (b *Blueprint) Frames() (out []*Frame) {
 	for frame, _ := range b.frames_ {
-		is_link := frame.Object().typ == LinkTargetType
+		is_link := frame.Type() == LinkTargetType
 		if !is_link {
 			out = append(out, frame)
 		}
@@ -51,7 +51,7 @@ func (b *Blueprint) String(interface{}) string {
 type Link struct {
 	Blueprint *Blueprint
 	A, B      *Frame
-	Param     int
+	Param     string
 	Order     int
 }
 
@@ -148,8 +148,42 @@ func (bp *Blueprint) Add(typ Type) *Frame {
 	return frame
 }
 
-func (be *Frame) Object() *Object {
-	return be.blueprint.active_machine.objects[be]
+func (f *Frame) Object() *Object {
+	return f.blueprint.active_machine.objects[f]
+}
+
+func (f *Frame) Type() Type {
+	o := f.Object()
+	if o == nil {
+		fmt.Println("Object is nil!")
+		return nil
+	}
+	return o.typ
+}
+
+func (f *Frame) Parameters() (params []Parameter) {
+	if typ := f.Type(); typ != nil {
+		params = typ.Parameters()
+	}
+	for param_link, _ := range f.blueprint.links {
+		if f != param_link.A {
+			continue
+		}
+		_, existing := GetParam(params, param_link.Param)
+		if existing != nil {
+			continue
+		}
+		params = append(params, &FixedParameter{param_link.Param, nil, false})
+	}
+	return params
+}
+
+func (f *Frame) Title() string {
+	tname := "nil"
+	if t := f.Type(); t != nil {
+		tname = t.Name()
+	}
+	return fmt.Sprintf("%s:%s", f.Name, tname)
 }
 
 func (f *Frame) Delete() {
@@ -182,7 +216,8 @@ func (f *Frame) HitTest(p Vec2) bool {
 }
 
 func (link Link) StartPos() Vec2 {
-	return link.A.ParamCenter(link.Param)
+	i, _ := GetParam(link.A.Parameters(), link.Param)
+	return link.A.ParamCenter(i)
 }
 
 func (link Link) EndPos() Vec2 {
@@ -206,7 +241,9 @@ func (link *Link) Delete() {
 
 func (link *Link) AppendWidget(widgets *Widgets) {
 	line := widgets.Line(link.StartPos(), link.EndPos())
-	if link.A.Object().typ.Parameters()[link.Param].Output() {
+	params := link.A.Parameters()
+	_, param := GetParam(params, link.Param)
+	if param.Output() {
 		line.Start = MakeCircle(param_r/4, "#000")
 		line.End = MakeArrow()
 	} else {
@@ -215,4 +252,13 @@ func (link *Link) AppendWidget(widgets *Widgets) {
 	}
 	line.Middle = MakeText(fmt.Sprint(link.Order))
 	line.Middle.Scale = .75
+}
+
+func GetParam(params []Parameter, name string) (int, Parameter) {
+	for i, param := range params {
+		if param.Name() == name {
+			return i, param
+		}
+	}
+	return -1, nil
 }
