@@ -42,11 +42,9 @@ func (ParamLayer) Drag(t *Touch) Touching {
 	if frame == nil {
 		return nil
 	}
-	blue := frame.blueprint
-	link := &Link{blue, frame, blue.MakeLinkTarget(), param, NextOrder(frame, param)}
-	link.B.pos = t.Global
-	blue.links[link] = true
-	return link
+	target := frame.blueprint.MakeLinkTarget()
+	target.pos = t.Global
+	return frame.AddLink(param, target)
 }
 
 func (LinkLayer) Drag(t *Touch) Touching {
@@ -54,23 +52,23 @@ func (LinkLayer) Drag(t *Touch) Touching {
 	if link == nil {
 		return nil
 	}
-	blue := link.Blueprint
-	link.B = blue.MakeLinkTarget()
-	link.B.pos = t.Global
+	target := TheVM.ActiveBlueprint.MakeLinkTarget()
+	target.pos = t.Global
+	link.SetTarget(target)
 	return link
 }
 
 func (l *Link) Move(touch *Touch) {
-	l.B.pos = touch.Global
+	l.B().pos = touch.Global
 }
 
 func (l *Link) End(touch *Touch) {
 	frame := touch.FindFrameBelow()
 	if frame == nil {
-		l.B.Delete()
+		l.B().Delete()
 	} else {
-		fake_target := l.B
-		l.B = frame
+		fake_target := l.B()
+		l.SetTarget(frame)
 		fake_target.Delete()
 	}
 }

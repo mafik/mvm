@@ -12,8 +12,7 @@ type VM struct {
 
 type Blueprint struct {
 	name           string
-	frames_        map[*Frame]bool
-	links          map[*Link]bool
+	frames_        map[*Frame]bool // TODO: rename to frames
 	machines       map[*Machine]bool
 	active_machine *Machine
 }
@@ -37,7 +36,9 @@ func (b *Blueprint) Parameters() []Parameter {
 }
 
 func (b *Blueprint) Instantiate(o *Object) {
-	o.priv = &Machine{}
+	o.priv = &Machine{
+		objects: make(map[*Frame]*Object),
+	}
 }
 
 func (b *Blueprint) Run(args Args) {
@@ -49,17 +50,22 @@ func (b *Blueprint) String(interface{}) string {
 }
 
 type Link struct {
-	Blueprint *Blueprint
-	A, B      *Frame
-	Param     string
-	Order     int
+	param_name string
+	source     *Frame
+	index      int
+}
+
+type LinkSet struct {
+	ParamName string
+	Targets   []*Frame
 }
 
 type Frame struct {
 	blueprint *Blueprint
 	pos       Vec2
 	size      Vec2
-	Name      string
+	name      string
+	link_sets []LinkSet
 }
 
 type Args map[string][]*Object
@@ -119,9 +125,9 @@ func (o *Object) MarkForExecution() {
 
 func MakeBlueprint(name string) *Blueprint {
 	bp := &Blueprint{
-		name:    name,
-		frames_: make(map[*Frame]bool),
-		links:   make(map[*Link]bool),
+		name:     name,
+		frames_:  make(map[*Frame]bool),
+		machines: make(map[*Machine]bool),
 	}
 	bp.active_machine = &Machine{
 		objects: make(map[*Frame]*Object),
@@ -155,7 +161,6 @@ func (f *Frame) Object() *Object {
 func (f *Frame) Type() Type {
 	o := f.Object()
 	if o == nil {
-		fmt.Println("Object is nil!")
 		return nil
 	}
 	return o.typ
@@ -165,15 +170,12 @@ func (f *Frame) Parameters() (params []Parameter) {
 	if typ := f.Type(); typ != nil {
 		params = typ.Parameters()
 	}
-	for param_link, _ := range f.blueprint.links {
-		if f != param_link.A {
-			continue
-		}
-		_, existing := GetParam(params, param_link.Param)
+	for _, link_set := range f.link_sets {
+		_, existing := GetParam(params, link_set.ParamName)
 		if existing != nil {
 			continue
 		}
-		params = append(params, &FixedParameter{param_link.Param, nil, false})
+		params = append(params, &FixedParameter{link_set.ParamName, nil, false})
 	}
 	return params
 }
@@ -183,14 +185,20 @@ func (f *Frame) Title() string {
 	if t := f.Type(); t != nil {
 		tname = t.Name()
 	}
-	return fmt.Sprintf("%s:%s", f.Name, tname)
+	return fmt.Sprintf("%s:%s", f.name, tname)
 }
 
 func (f *Frame) Delete() {
 	b := f.blueprint
-	for link, _ := range b.links {
-		if f == link.A || f == link.B {
-			delete(b.links, link)
+	for frame, _ := range b.frames_ {
+		for s, _ := range frame.link_sets {
+			link_set := &frame.link_sets[s]
+			for i := 0; i < len(link_set.Targets); i++ {
+				if f == link_set.Targets[i] {
+					link_set.Targets = append(link_set.Targets[:i], link_set.Targets[i+1:]...)
+					i--
+				}
+			}
 		}
 	}
 	delete(b.frames_, f)
@@ -216,42 +224,39 @@ func (f *Frame) HitTest(p Vec2) bool {
 }
 
 func (link Link) StartPos() Vec2 {
-	i, _ := GetParam(link.A.Parameters(), link.Param)
-	return link.A.ParamCenter(i)
+	i, _ := GetParam(link.source.Parameters(), link.param_name)
+	return link.source.ParamCenter(i)
 }
 
 func (link Link) EndPos() Vec2 {
-	if link.B == nil {
-		return Pointer.Global
-	}
 	a := link.StartPos()
-	return Ray(a, link.B.pos, link.B.size)
+	target := link.B()
+	return Ray(a, target.pos, target.size)
 }
 
 func (link *Link) Delete() {
-	delete(link.Blueprint.links, link)
-	for other, _ := range link.Blueprint.links {
-		if other.A == link.A &&
-			other.Param == link.Param &&
-			other.Order > link.Order {
-			other.Order--
-		}
-	}
+	link_set := link.source.GetLinkSet(link.param_name)
+	link_set.Targets = append(link_set.Targets[:link.index], link_set.Targets[link.index+1:]...)
 }
 
-func (link *Link) AppendWidget(widgets *Widgets) {
-	line := widgets.Line(link.StartPos(), link.EndPos())
-	params := link.A.Parameters()
-	_, param := GetParam(params, link.Param)
-	if param.Output() {
-		line.Start = MakeCircle(param_r/4, "#000")
-		line.End = MakeArrow()
-	} else {
-		line.Start = MakeArrow()
-		line.End = MakeCircle(param_r/4, "#000")
+func (frame *Frame) DrawLinks(widgets *Widgets) {
+	params := frame.Parameters()
+	for _, link_set := range frame.link_sets {
+		for i, _ := range link_set.Targets {
+			link := Link{link_set.ParamName, frame, i}
+			line := widgets.Line(link.StartPos(), link.EndPos())
+			_, param := GetParam(params, link_set.ParamName)
+			if param.Output() {
+				line.Start = MakeCircle(param_r/4, "#000")
+				line.End = MakeArrow()
+			} else {
+				line.Start = MakeArrow()
+				line.End = MakeCircle(param_r/4, "#000")
+			}
+			line.Middle = MakeText(fmt.Sprint(i))
+			line.Middle.Scale = .75
+		}
 	}
-	line.Middle = MakeText(fmt.Sprint(link.Order))
-	line.Middle.Scale = .75
 }
 
 func GetParam(params []Parameter, name string) (int, Parameter) {
@@ -261,4 +266,36 @@ func GetParam(params []Parameter, name string) (int, Parameter) {
 		}
 	}
 	return -1, nil
+}
+
+func (f *Frame) GetLinkSet(param_name string) *LinkSet {
+	for i, link_set := range f.link_sets {
+		if link_set.ParamName == param_name {
+			return &f.link_sets[i]
+		}
+	}
+	return nil
+}
+
+func (f *Frame) ForceGetLinkSet(param_name string) *LinkSet {
+	links := f.GetLinkSet(param_name)
+	if links == nil {
+		f.link_sets = append(f.link_sets, LinkSet{param_name, nil})
+		links = &f.link_sets[len(f.link_sets)-1]
+	}
+	return links
+}
+
+func (f *Frame) AddLink(param_name string, target *Frame) *Link {
+	link_set := f.ForceGetLinkSet(param_name)
+	link_set.Targets = append(link_set.Targets, target)
+	return &Link{param_name, f, len(link_set.Targets) - 1}
+}
+
+func (l *Link) SetTarget(target *Frame) {
+	l.source.ForceGetLinkSet(l.param_name).Targets[l.index] = target
+}
+
+func (l *Link) B() *Frame {
+	return l.source.ForceGetLinkSet(l.param_name).Targets[l.index]
 }

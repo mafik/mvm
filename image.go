@@ -19,7 +19,7 @@ func MakeEcho(b *Blueprint, pos Vec2, text string) (*Frame, *Frame) {
 	exec.pos = Add(pos, Vec2{100, -50})
 	exec.size = Vec2{100, 50}
 
-	b.links[&Link{b, exec, t, "unknown", 0}] = true
+	exec.AddLink("unknown", t)
 	return exec, t
 }
 

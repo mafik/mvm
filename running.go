@@ -37,16 +37,6 @@ type FrameLayer struct{}
 type ParamLayer struct{}
 type LinkLayer struct{}
 
-func NextOrder(frame *Frame, param string) (order int) {
-	blue := frame.blueprint
-	for link, _ := range blue.links {
-		if link.A == frame && link.Param == param {
-			order++
-		}
-	}
-	return
-}
-
 // Menu
 var menu *Vec2
 var menu_index int
@@ -374,9 +364,9 @@ func Update(updates chan string) {
 func (o *Object) Args() Args {
 	args := make(Args)
 	m := o.machine
-	for l, _ := range o.frame.blueprint.links {
-		if l.A == o.frame {
-			args[l.Param] = append(args[l.Param], m.objects[l.B])
+	for _, link_set := range o.frame.link_sets {
+		for _, target := range link_set.Targets {
+			args[link_set.ParamName] = append(args[link_set.ParamName], m.objects[target])
 		}
 	}
 	return args
