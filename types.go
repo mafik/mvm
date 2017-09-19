@@ -12,7 +12,7 @@ type VM struct {
 
 type Blueprint struct {
 	name           string
-	frames_        map[*Frame]bool // TODO: rename to frames
+	frames         map[*Frame]bool
 	machines       map[*Machine]bool
 	active_machine *Machine
 }
@@ -22,7 +22,7 @@ func (b *Blueprint) Name() string {
 }
 
 func (b *Blueprint) Frames() (out []*Frame) {
-	for frame, _ := range b.frames_ {
+	for frame, _ := range b.frames {
 		is_link := frame.Type() == LinkTargetType
 		if !is_link {
 			out = append(out, frame)
@@ -126,7 +126,7 @@ func (o *Object) MarkForExecution() {
 func MakeBlueprint(name string) *Blueprint {
 	bp := &Blueprint{
 		name:     name,
-		frames_:  make(map[*Frame]bool),
+		frames:   make(map[*Frame]bool),
 		machines: make(map[*Machine]bool),
 	}
 	bp.active_machine = &Machine{
@@ -142,7 +142,7 @@ func (bp *Blueprint) Add(typ Type) *Frame {
 		pos:       Vec2{0, 0},
 		size:      Vec2{100, 100},
 	}
-	bp.frames_[frame] = true
+	bp.frames[frame] = true
 	m := bp.active_machine
 	object := &Object{
 		machine: m,
@@ -190,7 +190,7 @@ func (f *Frame) Title() string {
 
 func (f *Frame) Delete() {
 	b := f.blueprint
-	for frame, _ := range b.frames_ {
+	for frame, _ := range b.frames {
 		for s, _ := range frame.link_sets {
 			link_set := &frame.link_sets[s]
 			for i := 0; i < len(link_set.Targets); i++ {
@@ -201,7 +201,7 @@ func (f *Frame) Delete() {
 			}
 		}
 	}
-	delete(b.frames_, f)
+	delete(b.frames, f)
 	for m, _ := range b.machines {
 		delete(m.objects, f)
 	}

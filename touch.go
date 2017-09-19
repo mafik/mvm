@@ -102,7 +102,7 @@ func LinkDist(p Vec2, link *Link) float64 {
 
 func (t TouchSnapshot) PointedLink() (best *Link) {
 	best_dist := 8.0
-	for frame, _ := range TheVM.ActiveBlueprint.frames_ {
+	for frame, _ := range TheVM.ActiveBlueprint.frames {
 		for _, link_set := range frame.link_sets {
 			for i, _ := range link_set.Targets {
 				link := &Link{link_set.ParamName, frame, i}

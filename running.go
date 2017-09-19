@@ -173,8 +173,6 @@ func ProcessEvent(e Event, updates chan string) {
 			if blueprint, ok := o.typ.(*Blueprint); ok {
 				TheVM.ActiveBlueprint = blueprint
 				blueprint.active_machine = o.priv.(*Machine)
-				//Input(e)
-				fmt.Println("It's a blueprint!")
 			} else {
 				Input(e)
 			}

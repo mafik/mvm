@@ -233,7 +233,7 @@ func (p ParamLayer) Draw() (widgets Widgets) {
 }
 
 func (l LinkLayer) Draw() (widgets Widgets) {
-	for frame, _ := range TheVM.ActiveBlueprint.frames_ {
+	for frame, _ := range TheVM.ActiveBlueprint.frames {
 		frame.DrawLinks(&widgets)
 	}
 	return
