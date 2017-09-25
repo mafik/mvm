@@ -166,6 +166,11 @@ func ProcessEvent(e Event, updates chan string) {
 			} else {
 				Input(e)
 			}
+		case "Escape":
+			parent := TheVM.root.parent
+			if parent != nil {
+				TheVM.root = parent
+			}
 		case "Backspace":
 			Input(e)
 		case "KeyQ":
@@ -315,27 +320,24 @@ func Update(updates chan string) {
 			fmt.Println("Warning: found non-Drawable layer")
 		}
 	}
-	blueprints_slice, active_i := TheVM.AvailableBlueprints()
-	for i, bp := range blueprints_slice {
-		widgets.ButtonList().
-			AlignLeft(float64(i)*(button_width+margin)).
-			AlignTop(0).
-			Colors("#000", "#fff", "#444", "#ccc").
-			Add(bp.Name(), i == active_i)
+
+	bar := widgets.ButtonList().AlignTop(0).AlignLeft(0).Colors2("#000", "#fff", "#444", "#bbb")
+	for it := TheVM.root; it != nil; it = it.parent {
+		bar = bar.Add2(it.typ.Name(), it == TheVM.root)
 	}
 	widgets.ButtonList().
 		Dir(-1).
 		AlignLeft(0).
 		AlignBottom(window.size.Y).
-		Add("navigate", nav).
-		Add("drag", Pointer.Source == "Shift")
+		Add2("navigate", nav).
+		Add2("drag", Pointer.Source == "Shift")
 
 	if menu != nil {
 		buttons := widgets.ButtonList().
 			PositionAt(*menu).
-			Add("cancel", menu_index == 0)
+			Add2("cancel", menu_index == 0)
 		for i, t := range menu_types {
-			buttons.Add(t.Name(), menu_index == i+1)
+			buttons.Add2(t.Name(), menu_index == i+1)
 		}
 	}
 

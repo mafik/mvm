@@ -80,9 +80,11 @@ type ButtonList interface {
 	AlignBottom(float64) ButtonList
 	AlignTop(float64) ButtonList
 	PositionAt(Vec2) ButtonList
-	Add(text string, active bool) ButtonList
+	Add(text string) ButtonList
+	Add2(text string, active bool) ButtonList
 	Dir(dir int) ButtonList
-	Colors(active_bg, active_fg, inactive_bg, inactive_fg string) ButtonList
+	Colors(bg, fg string) ButtonList
+	Colors2(active_bg, active_fg, inactive_bg, inactive_fg string) ButtonList
 }
 
 type ButtonListContext struct {
@@ -96,7 +98,13 @@ func (w *Widgets) ButtonList() ButtonList {
 	return &ButtonListContext{w, Vec2{0, 0}, "#888", "#fff", "#ccc", "#000", 1}
 }
 
-func (c *ButtonListContext) Colors(active_bg, active_fg, inactive_bg, inactive_fg string) ButtonList {
+func (c *ButtonListContext) Colors(bg, fg string) ButtonList {
+	c.active_bg = bg
+	c.active_fg = fg
+	return c
+}
+
+func (c *ButtonListContext) Colors2(active_bg, active_fg, inactive_bg, inactive_fg string) ButtonList {
 	c.active_bg = active_bg
 	c.active_fg = active_fg
 	c.inactive_bg = inactive_bg
@@ -124,7 +132,11 @@ func (c *ButtonListContext) PositionAt(pos Vec2) ButtonList {
 	return c
 }
 
-func (c *ButtonListContext) Add(text string, active bool) ButtonList {
+func (c *ButtonListContext) Add(text string) ButtonList {
+	return c.Add2(text, true)
+}
+
+func (c *ButtonListContext) Add2(text string, active bool) ButtonList {
 	fg, bg := c.inactive_fg, c.inactive_bg
 	if active {
 		fg, bg = c.active_fg, c.active_bg
