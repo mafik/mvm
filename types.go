@@ -5,7 +5,7 @@ import (
 )
 
 type VM struct {
-	root *Object
+	active *Object
 }
 
 type Blueprint struct {
@@ -36,6 +36,7 @@ func (b *Blueprint) Instantiate(o *Object) {
 	o.priv = &Machine{
 		objects: make(map[*Frame]*Object),
 	}
+	b.instances[o] = true
 }
 
 func (b *Blueprint) Run(args Args) {
@@ -95,7 +96,7 @@ type Object struct {
 }
 
 func (vm VM) AvailableBlueprints() (bl []*Blueprint, active int) {
-	bl = append(bl, vm.root.typ.(*Blueprint))
+	bl = append(bl, vm.active.typ.(*Blueprint))
 	active = 0
 	return
 }
@@ -143,7 +144,7 @@ func (f *Frame) Object(blueprint_instance *Object) *Object {
 }
 
 func (f *Frame) Type() Type {
-	o := f.Object(TheVM.root)
+	o := f.Object(TheVM.active)
 	if o == nil {
 		return nil
 	}

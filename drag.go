@@ -52,7 +52,7 @@ func (LinkLayer) Drag(t *Touch) Touching {
 	if link == nil {
 		return nil
 	}
-	target := TheVM.root.typ.(*Blueprint).MakeLinkTarget()
+	target := TheVM.active.typ.(*Blueprint).MakeLinkTarget()
 	target.pos = t.Global
 	link.SetTarget(target)
 	return link

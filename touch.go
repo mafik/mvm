@@ -58,7 +58,7 @@ type Container struct {
 var Pointer Touch
 
 func (t TouchSnapshot) FindFrameBelow() *Frame {
-	for _, frame := range TheVM.root.typ.(*Blueprint).Frames() {
+	for _, frame := range TheVM.active.typ.(*Blueprint).Frames() {
 		if frame.HitTest(t.Global) {
 			return frame
 		}
@@ -67,13 +67,13 @@ func (t TouchSnapshot) FindFrameBelow() *Frame {
 }
 
 func (t TouchSnapshot) FindObjectBelow() *Object {
-	machine := TheVM.root.priv.(*Machine)
+	machine := TheVM.active.priv.(*Machine)
 	frame := t.FindFrameBelow()
 	return machine.objects[frame]
 }
 
 func (t TouchSnapshot) FindParamBelow() (*Frame, string) {
-	blueprint := TheVM.root.typ.(*Blueprint)
+	blueprint := TheVM.active.typ.(*Blueprint)
 	for _, f := range blueprint.Frames() {
 		for i, param := range f.Parameters() {
 			if CircleClicked(f.ParamCenter(i), t.Global) {
@@ -102,7 +102,7 @@ func LinkDist(p Vec2, link *Link) float64 {
 
 func (t TouchSnapshot) PointedLink() (best *Link) {
 	best_dist := 8.0
-	for frame, _ := range TheVM.root.typ.(*Blueprint).frames {
+	for frame, _ := range TheVM.active.typ.(*Blueprint).frames {
 		for _, link_set := range frame.link_sets {
 			for i, _ := range link_set.Targets {
 				link := &Link{link_set.ParamName, frame, i}

@@ -13,7 +13,7 @@ func MakeEcho(b *Blueprint, pos Vec2, text string) (*Frame, *Frame) {
 	t.size = Vec2{100, 50}
 	var buf bytes.Buffer
 	fmt.Fprint(&buf, text)
-	t.Object(TheVM.root).priv = buf.Bytes()
+	t.Object(TheVM.active).priv = buf.Bytes()
 
 	exec := b.Add(ExecType)
 	exec.pos = Add(pos, Vec2{100, -180})
@@ -25,8 +25,8 @@ func MakeEcho(b *Blueprint, pos Vec2, text string) (*Frame, *Frame) {
 
 func SetupDefault() {
 	welcome := MakeBlueprint("welcome")
-	TheVM.root = MakeObject(welcome, nil)
-	welcome.instances[TheVM.root] = true
+	TheVM.active = MakeObject(welcome, nil)
+	welcome.instances[TheVM.active] = true
 	MakeEcho(welcome, Vec2{-100, -50}, "Hello")
 	MakeEcho(welcome, Vec2{100, 50}, "world!")
 }

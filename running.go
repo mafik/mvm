@@ -78,7 +78,7 @@ func (frame *Frame) MarkForExecution() {
 	if frame == nil {
 		return
 	}
-	obj := frame.Object(TheVM.root)
+	obj := frame.Object(TheVM.active)
 	obj.MarkForExecution()
 }
 
@@ -162,14 +162,14 @@ func ProcessEvent(e Event, updates chan string) {
 				break
 			}
 			if _, ok := o.typ.(*Blueprint); ok {
-				TheVM.root = o
+				TheVM.active = o
 			} else {
 				Input(e)
 			}
 		case "Escape":
-			parent := TheVM.root.parent
+			parent := TheVM.active.parent
 			if parent != nil {
-				TheVM.root = parent
+				TheVM.active = parent
 			}
 		case "Backspace":
 			Input(e)
@@ -279,7 +279,7 @@ func ProcessEvent(e Event, updates chan string) {
 		case "ControlLeft":
 			if menu != nil && menu_index > 0 {
 				t := menu_types[menu_index-1]
-				blueprint := TheVM.root.typ.(*Blueprint)
+				blueprint := TheVM.active.typ.(*Blueprint)
 				frame := blueprint.Add(t)
 				frame.pos = window.ToGlobal(*menu)
 			}
@@ -322,8 +322,8 @@ func Update(updates chan string) {
 	}
 
 	bar := widgets.ButtonList().AlignTop(0).AlignLeft(0).Colors2("#000", "#fff", "#444", "#bbb")
-	for it := TheVM.root; it != nil; it = it.parent {
-		bar = bar.Add2(it.typ.Name(), it == TheVM.root)
+	for it := TheVM.active; it != nil; it = it.parent {
+		bar = bar.Add2(it.typ.Name(), it == TheVM.active)
 	}
 	widgets.ButtonList().
 		Dir(-1).
@@ -398,6 +398,6 @@ P1
 
 P2
 - Minimum & maximum number of arguments
-- Browsing machines
+- Browsing for all machines of a given type
 
 */

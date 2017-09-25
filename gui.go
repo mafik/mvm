@@ -201,10 +201,10 @@ func (h HighlightLayer) Draw() (widgets Widgets) {
 }
 
 func (f FrameLayer) Draw() (widgets Widgets) {
-	blueprint := TheVM.root.typ.(*Blueprint)
+	blueprint := TheVM.active.typ.(*Blueprint)
 	for _, frame := range blueprint.Frames() {
 		title := frame.Title()
-		obj := frame.Object(TheVM.root)
+		obj := frame.Object(TheVM.active)
 		typ := frame.Type()
 		s := ""
 		if obj != nil {
@@ -226,7 +226,7 @@ func (f FrameLayer) Draw() (widgets Widgets) {
 }
 
 func (p ParamLayer) Draw() (widgets Widgets) {
-	for _, frame := range TheVM.root.typ.(*Blueprint).Frames() {
+	for _, frame := range TheVM.active.typ.(*Blueprint).Frames() {
 		params := frame.Parameters()
 		if param_count := len(params); param_count > 0 {
 			widgets.Line(
@@ -245,7 +245,7 @@ func (p ParamLayer) Draw() (widgets Widgets) {
 }
 
 func (l LinkLayer) Draw() (widgets Widgets) {
-	for frame, _ := range TheVM.root.typ.(*Blueprint).frames {
+	for frame, _ := range TheVM.active.typ.(*Blueprint).frames {
 		frame.DrawLinks(&widgets)
 	}
 	return

@@ -112,14 +112,14 @@ type VMGob struct {
 }
 
 func (vm *VM) Gob(s Serializer) Gob {
-	return VMGob{ActiveIndex: s.Id(vm.root)}
+	return VMGob{ActiveIndex: s.Id(vm.active)}
 }
 
 func (gob VMGob) Ungob() Gobbable { return &VM{} }
 
 func (vm *VM) Connect(d Deserializer, gob Gob) {
 	vmGob := gob.(VMGob)
-	vm.root = d.Get(vmGob.ActiveIndex).(*Object)
+	vm.active = d.Get(vmGob.ActiveIndex).(*Object)
 }
 
 type BlueprintGob struct {
