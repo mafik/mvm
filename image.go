@@ -26,7 +26,6 @@ func MakeEcho(b *Blueprint, pos Vec2, text string) (*Frame, *Frame) {
 func SetupDefault() {
 	welcome := MakeBlueprint("welcome")
 	TheVM.active = MakeObject(welcome, nil)
-	welcome.instances[TheVM.active] = true
 	MakeEcho(welcome, Vec2{-100, -50}, "Hello")
 	MakeEcho(welcome, Vec2{100, 50}, "world!")
 }

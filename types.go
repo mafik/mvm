@@ -192,6 +192,22 @@ func (f *Frame) Delete() {
 	}
 }
 
+func (f *Frame) HitTestTitle(p Vec2) bool {
+	l := f.pos
+	s := f.size
+	switch {
+	case p.X < l.X-s.X/2:
+		return false
+	case p.X > l.X+s.X/2:
+		return false
+	case p.Y < l.Y-s.Y/2-20:
+		return false
+	case p.Y > l.Y-s.Y/2:
+		return false
+	}
+	return true
+}
+
 func (f *Frame) HitTest(p Vec2) bool {
 	l := f.pos
 	s := f.size

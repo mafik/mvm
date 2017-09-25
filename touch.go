@@ -66,6 +66,15 @@ func (t TouchSnapshot) FindFrameBelow() *Frame {
 	return nil
 }
 
+func (t TouchSnapshot) FindFrameTitleBelow() *Frame {
+	for _, frame := range TheVM.active.typ.(*Blueprint).Frames() {
+		if frame.HitTestTitle(t.Global) {
+			return frame
+		}
+	}
+	return nil
+}
+
 func (t TouchSnapshot) FindObjectBelow() *Object {
 	machine := TheVM.active.priv.(*Machine)
 	frame := t.FindFrameBelow()

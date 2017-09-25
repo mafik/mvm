@@ -52,6 +52,20 @@ func (f *Frame) ParamCenter(i int) Vec2 {
 func Input(e Event) {
 	o := Pointer.FindObjectBelow()
 	if o == nil {
+		f := Pointer.FindFrameTitleBelow()
+		if f == nil {
+			return
+		}
+
+		switch e.Key {
+		case "Backspace":
+			if l := len(f.name); l > 0 {
+				f.name = f.name[:l-1]
+			}
+		case "Enter":
+		default:
+			f.name += e.Key
+		}
 		return
 	}
 	if o.typ == TextType {
@@ -386,18 +400,57 @@ type Event struct {
 }
 
 /*
-TODO
-
 P0
 - Sequencing
 - Blueprint-functions
 
 P1
-- Highlighting frames with the right type
 - Do a proper menu
+- Sort out keybindings
 
 P2
 - Minimum & maximum number of arguments
 - Browsing for all machines of a given type
+- Highlighting frames with the right type
+
+TODO:
+- running the "run" object in blueprint
+- blueprint parameter objects
+
+Note: Events in complex objects
+- complex objects can send many types of events
+- they will write those events into their output frames
+
+Note: Sequencing and data updates
+- functions can be scheduled automatically with a "then" relation
+- "then" relation is executed when in the start frame:
+  - a simple function has completed
+  - a data object was updated
+
+Note: Scheduling
+- scheduled functions are put into a queue (and marked with a number)
+- functions in the queue are executed sequentially
+
+Note: Background tasks
+- long-running functions can go into background and let rest of the system run
+- background functions send updates back to the main thread
+- the updates are handled immediately
+
+Note: Running blueprints
+- execution starts with a frame called "run"
+
+Note: Initializing frames
+- frame can be initialized with a key shortcut
+- initializing blueprints calls the "init" frame
+- each type has a "Constructor" type - that builds it
+
+Note: Imitation mode
+- imitiation mode is not available in the root blueprint
+- in imitation mode the first frame is called "run"
+- one of the frames is marked as "last"
+- every subsequent frame is linked to the "last" with a "then" relation
+- object construction creates a frame with constructor
+- writing into an object creates an external frame (outside of the blueprint)
+  that writes given text into an object
 
 */
