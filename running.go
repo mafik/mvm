@@ -78,7 +78,7 @@ func (frame *Frame) MarkForExecution() {
 	if frame == nil {
 		return
 	}
-	obj := frame.Object()
+	obj := frame.Object(TheVM.root)
 	obj.MarkForExecution()
 }
 
@@ -96,7 +96,7 @@ func ProcessEvent(e Event, updates chan string) {
 	case "ContextMenu":
 	case "Finished":
 		o := e.Object
-		o.Running = false
+		o.running = false
 		for _, object := range o.Args()["then"] {
 			if object != nil {
 				object.MarkForExecution()
@@ -128,16 +128,6 @@ func ProcessEvent(e Event, updates chan string) {
 	case "MouseUp":
 	case "KeyDown":
 		switch e.Code {
-		case "Insert":
-			bp := MakeBlueprint("new")
-			TheVM.Blueprints[bp] = true
-			TheVM.ActiveBlueprint = bp
-		case "PageUp":
-			blues, i := TheVM.OrderedBlueprints()
-			TheVM.ActiveBlueprint = blues[(i+1)%len(blues)]
-		case "PageDown":
-			blues, i := TheVM.OrderedBlueprints()
-			TheVM.ActiveBlueprint = blues[(i+len(blues)-1)%len(blues)]
 		case "Tab":
 			nav = true
 		case "ShiftLeft":
@@ -149,10 +139,11 @@ func ProcessEvent(e Event, updates chan string) {
 			for _, typ := range Types {
 				menu_types = append(menu_types, typ)
 			}
-			blues, _ := TheVM.OrderedBlueprints()
+			blues, _ := TheVM.AvailableBlueprints()
 			for _, b := range blues {
 				menu_types = append(menu_types, b)
 			}
+			menu_types = append(menu_types, MakeBlueprint("new blueprint"))
 		case "Space":
 			o := Pointer.FindObjectBelow()
 			if o == nil {
@@ -170,9 +161,8 @@ func ProcessEvent(e Event, updates chan string) {
 			if o == nil {
 				break
 			}
-			if blueprint, ok := o.typ.(*Blueprint); ok {
-				TheVM.ActiveBlueprint = blueprint
-				blueprint.active_machine = o.priv.(*Machine)
+			if _, ok := o.typ.(*Blueprint); ok {
+				TheVM.root = o
 			} else {
 				Input(e)
 			}
@@ -284,7 +274,7 @@ func ProcessEvent(e Event, updates chan string) {
 		case "ControlLeft":
 			if menu != nil && menu_index > 0 {
 				t := menu_types[menu_index-1]
-				blueprint := TheVM.ActiveBlueprint
+				blueprint := TheVM.root.typ.(*Blueprint)
 				frame := blueprint.Add(t)
 				frame.pos = window.ToGlobal(*menu)
 			}
@@ -325,7 +315,7 @@ func Update(updates chan string) {
 			fmt.Println("Warning: found non-Drawable layer")
 		}
 	}
-	blueprints_slice, active_i := TheVM.OrderedBlueprints()
+	blueprints_slice, active_i := TheVM.AvailableBlueprints()
 	for i, bp := range blueprints_slice {
 		widgets.ButtonList().
 			AlignLeft(float64(i)*(button_width+margin)).
@@ -361,7 +351,7 @@ func Update(updates chan string) {
 
 func (o *Object) Args() Args {
 	args := make(Args)
-	m := o.machine
+	m := o.parent.priv.(*Machine)
 	for _, link_set := range o.frame.link_sets {
 		for _, target := range link_set.Targets {
 			args[link_set.ParamName] = append(args[link_set.ParamName], m.objects[target])
@@ -374,7 +364,7 @@ func (o *Object) Run(events chan Event) {
 	typ := o.typ
 	args := o.Args()
 	fmt.Printf("Running %v...\n", typ.Name())
-	o.Running = true
+	o.running = true
 	o.execute = false
 	go func() {
 		typ.Run(args)

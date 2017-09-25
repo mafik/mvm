@@ -13,10 +13,10 @@ func MakeEcho(b *Blueprint, pos Vec2, text string) (*Frame, *Frame) {
 	t.size = Vec2{100, 50}
 	var buf bytes.Buffer
 	fmt.Fprint(&buf, text)
-	t.Object().priv = buf.Bytes()
+	t.Object(TheVM.root).priv = buf.Bytes()
 
 	exec := b.Add(ExecType)
-	exec.pos = Add(pos, Vec2{100, -50})
+	exec.pos = Add(pos, Vec2{100, -180})
 	exec.size = Vec2{100, 50}
 
 	exec.AddLink("unknown", t)
@@ -25,11 +25,10 @@ func MakeEcho(b *Blueprint, pos Vec2, text string) (*Frame, *Frame) {
 
 func SetupDefault() {
 	welcome := MakeBlueprint("welcome")
+	TheVM.root = MakeObject(welcome, nil)
+	welcome.instances[TheVM.root] = true
 	MakeEcho(welcome, Vec2{-100, -50}, "Hello")
 	MakeEcho(welcome, Vec2{100, 50}, "world!")
-
-	TheVM.Blueprints[welcome] = true
-	TheVM.ActiveBlueprint = welcome
 }
 
 var FileName string = "mvm.img"

@@ -28,11 +28,15 @@ type Flattener struct {
 }
 
 func (f *Flattener) Id(ble Gobbable) (id int) {
+	//fmt.Printf("Looking up ID for: %T %v\n", ble, ble)
 	id, ok := f.ids[ble]
 	if !ok {
 		id = len(f.gobbables)
+		//fmt.Printf("Not found - adding as %d\n", id)
 		f.gobbables = append(f.gobbables, ble)
 		f.ids[ble] = id
+	} else {
+		//fmt.Printf("Found at %d\n", id)
 	}
 	return
 }
@@ -52,11 +56,15 @@ func RegisterGobs() {
 func Flatten(ble Gobbable) ([]byte, error) {
 	RegisterGobs()
 	f := Flattener{ids: make(map[Gobbable]int)}
-	f.Id(ble) // the main Gobbable is saved at 0
+	f.ids[nil] = 0
+	f.gobbables = append(f.gobbables, nil)
+	f.Id(ble) // the main Gobbable is saved at 1
 	var gobs []Gob
-	for i := 0; i < len(f.gobbables); i++ {
-		ble = f.gobbables[i]
-		gobs = append(gobs, ble.Gob(&f))
+	gobs = append(gobs, nil)
+	for i := 1; i < len(f.gobbables); i++ {
+		b := f.gobbables[i]
+		//fmt.Printf("\nProcessing %d: %T %v\n", i, b, b)
+		gobs = append(gobs, b.Gob(&f))
 	}
 	var buf bytes.Buffer
 	enc := gob.NewEncoder(&buf)
@@ -80,64 +88,62 @@ func Unflatten(data []byte) (Gobbable, error) {
 		return nil, err
 	}
 
-	var gobbables Gobbables
+	gobbables := Gobbables{}
 	for _, gob := range gobs {
-		gobbables = append(gobbables, gob.Ungob())
+		var ble Gobbable
+		if gob != nil {
+			ble = gob.Ungob()
+		}
+		gobbables = append(gobbables, ble)
 	}
 	for i, ble := range gobbables {
-		ble.Connect(gobbables, gobs[i])
+		//fmt.Printf("Connecting gobbable %d\n", i)
+		if ble != nil {
+			ble.Connect(gobbables, gobs[i])
+		}
 	}
-	return gobbables[0], nil
+	return gobbables[1], nil
 }
 
 func (slice Gobbables) Get(i int) Gobbable { return slice[i] }
 
 type VMGob struct {
-	Blueprints  []int
 	ActiveIndex int
 }
 
 func (vm *VM) Gob(s Serializer) Gob {
-	gob := VMGob{ActiveIndex: s.Id(vm.ActiveBlueprint)}
-	for blue, _ := range vm.Blueprints {
-		gob.Blueprints = append(gob.Blueprints, s.Id(blue))
-	}
-	return gob
+	return VMGob{ActiveIndex: s.Id(vm.root)}
 }
 
-func (gob VMGob) Ungob() Gobbable { return &VM{Blueprints: make(map[*Blueprint]bool)} }
+func (gob VMGob) Ungob() Gobbable { return &VM{} }
 
 func (vm *VM) Connect(d Deserializer, gob Gob) {
 	vmGob := gob.(VMGob)
-	for _, i := range vmGob.Blueprints {
-		vm.Blueprints[d.Get(i).(*Blueprint)] = true
-	}
-	vm.ActiveBlueprint = d.Get(vmGob.ActiveIndex).(*Blueprint)
+	vm.root = d.Get(vmGob.ActiveIndex).(*Object)
 }
 
 type BlueprintGob struct {
-	Name          string
-	Frames        []int
-	Machines      []int
-	ActiveMachine int
+	Name      string
+	Frames    []int
+	Instances []int
 }
 
 func (blue *Blueprint) Gob(s Serializer) Gob {
-	gob := BlueprintGob{Name: blue.name, ActiveMachine: s.Id(blue.active_machine)}
+	gob := BlueprintGob{Name: blue.name}
 	for frame, _ := range blue.frames {
 		gob.Frames = append(gob.Frames, s.Id(frame))
 	}
-	for mach, _ := range blue.machines {
-		gob.Machines = append(gob.Machines, s.Id(mach))
+	for instance, _ := range blue.instances {
+		gob.Instances = append(gob.Instances, s.Id(instance))
 	}
 	return gob
 }
 
 func (gob BlueprintGob) Ungob() Gobbable {
 	return &Blueprint{
-		name:     gob.Name,
-		frames:   make(map[*Frame]bool),
-		machines: make(map[*Machine]bool),
+		name:      gob.Name,
+		frames:    make(map[*Frame]bool),
+		instances: make(map[*Object]bool),
 	}
 }
 
@@ -147,10 +153,9 @@ func (blue *Blueprint) Connect(d Deserializer, gob Gob) {
 	for _, i := range blueGob.Frames {
 		blue.frames[d.Get(i).(*Frame)] = true
 	}
-	for _, i := range blueGob.Machines {
-		blue.machines[d.Get(i).(*Machine)] = true
+	for _, i := range blueGob.Instances {
+		blue.instances[d.Get(i).(*Object)] = true
 	}
-	blue.active_machine = d.Get(blueGob.ActiveMachine).(*Machine)
 }
 
 type FrameGob struct {
@@ -223,7 +228,7 @@ func (m *Machine) Connect(d Deserializer, gob Gob) {
 }
 
 type ObjectGob struct {
-	Machine       int
+	Parent        int
 	Frame         int
 	Execute       bool
 	PrimitiveType string
@@ -232,20 +237,20 @@ type ObjectGob struct {
 }
 
 func (obj *Object) Gob(s Serializer) Gob {
-	priv := obj.priv
-	if machine, ok := priv.(*Machine); ok {
-		priv = s.Id(machine)
-	}
 	gob := ObjectGob{
-		Machine:       s.Id(obj.machine),
-		Frame:         s.Id(obj.frame),
 		Execute:       obj.execute,
 		PrimitiveType: "",
-		BlueprintType: -1,
-		Private:       priv,
+		Private:       obj.priv,
+	}
+	if obj.parent != nil {
+		gob.Parent = s.Id(obj.parent)
+	}
+	if obj.frame != nil {
+		gob.Frame = s.Id(obj.frame)
 	}
 	if blue, ok := obj.typ.(*Blueprint); ok {
 		gob.BlueprintType = s.Id(blue)
+		gob.Private = gob.Private.(*Machine).Gob(s)
 	} else {
 		gob.PrimitiveType = obj.typ.Name()
 	}
@@ -255,19 +260,27 @@ func (obj *Object) Gob(s Serializer) Gob {
 func (gob ObjectGob) Ungob() Gobbable {
 	o := &Object{
 		execute: gob.Execute,
-		priv:    gob.Private,
+	}
+	if gob.BlueprintType == 0 {
+		o.priv = gob.Private
+	} else {
+		o.priv = gob.Private.(MachineGob).Ungob()
 	}
 	return o
 }
 
 func (obj *Object) Connect(d Deserializer, gob Gob) {
 	objGob := gob.(ObjectGob)
-	obj.machine = d.Get(objGob.Machine).(*Machine)
-	obj.frame = d.Get(objGob.Frame).(*Frame)
-	if objGob.BlueprintType == -1 {
+	if parent, ok := d.Get(objGob.Parent).(*Object); ok {
+		obj.parent = parent
+	}
+	if frame, ok := d.Get(objGob.Frame).(*Frame); ok {
+		obj.frame = frame
+	}
+	if objGob.BlueprintType == 0 {
 		obj.typ = Types[objGob.PrimitiveType]
 	} else {
 		obj.typ = d.Get(objGob.BlueprintType).(*Blueprint)
-		obj.priv = d.Get(objGob.Private.(int))
+		obj.priv.(*Machine).Connect(d, objGob.Private.(MachineGob))
 	}
 }

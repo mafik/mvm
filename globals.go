@@ -120,4 +120,4 @@ var Types map[string]Type = map[string]Type{
 	"exec":   ExecType,
 }
 
-var TheVM *VM = &VM{Blueprints: make(map[*Blueprint]bool)}
+var TheVM *VM = &VM{}

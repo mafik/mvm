@@ -2,19 +2,16 @@ package mvm
 
 import (
 	"fmt"
-	"sort"
 )
 
 type VM struct {
-	Blueprints      map[*Blueprint]bool
-	ActiveBlueprint *Blueprint
+	root *Object
 }
 
 type Blueprint struct {
-	name           string
-	frames         map[*Frame]bool
-	machines       map[*Machine]bool
-	active_machine *Machine
+	name      string
+	frames    map[*Frame]bool
+	instances map[*Object]bool
 }
 
 func (b *Blueprint) Name() string {
@@ -89,34 +86,19 @@ type Machine struct {
 }
 
 type Object struct {
-	machine *Machine
+	parent  *Object
 	frame   *Frame
 	execute bool
-	Running bool
+	running bool
 	typ     Type
 	priv    interface{}
 }
 
-func (vm VM) OrderedBlueprints() ([]*Blueprint, int) {
-	var bl ByName
-	for b, _ := range vm.Blueprints {
-		bl = append(bl, b)
-	}
-	sort.Sort(bl)
-	var active int
-	for i, b := range bl {
-		if b == vm.ActiveBlueprint {
-			active = i
-		}
-	}
-	return bl, active
+func (vm VM) AvailableBlueprints() (bl []*Blueprint, active int) {
+	bl = append(bl, vm.root.typ.(*Blueprint))
+	active = 0
+	return
 }
-
-type ByName []*Blueprint
-
-func (b ByName) Len() int           { return len(b) }
-func (b ByName) Swap(i, j int)      { b[i], b[j] = b[j], b[i] }
-func (b ByName) Less(i, j int) bool { return b[i].name < b[j].name }
 
 func (o *Object) MarkForExecution() {
 	o.execute = true
@@ -124,16 +106,20 @@ func (o *Object) MarkForExecution() {
 }
 
 func MakeBlueprint(name string) *Blueprint {
-	bp := &Blueprint{
-		name:     name,
-		frames:   make(map[*Frame]bool),
-		machines: make(map[*Machine]bool),
+	return &Blueprint{
+		name:      name,
+		frames:    make(map[*Frame]bool),
+		instances: make(map[*Object]bool),
 	}
-	bp.active_machine = &Machine{
-		objects: make(map[*Frame]*Object),
+}
+
+func MakeObject(typ Type, frame *Frame) *Object {
+	o := &Object{
+		typ:   typ,
+		frame: frame,
 	}
-	bp.machines = map[*Machine]bool{bp.active_machine: true}
-	return bp
+	typ.Instantiate(o)
+	return o
 }
 
 func (bp *Blueprint) Add(typ Type) *Frame {
@@ -143,23 +129,21 @@ func (bp *Blueprint) Add(typ Type) *Frame {
 		size:      Vec2{100, 100},
 	}
 	bp.frames[frame] = true
-	m := bp.active_machine
-	object := &Object{
-		machine: m,
-		frame:   frame,
-		typ:     typ,
+	for instance, _ := range bp.instances {
+		object := MakeObject(typ, frame)
+		object.parent = instance
+		m := instance.priv.(*Machine)
+		m.objects[frame] = object
 	}
-	typ.Instantiate(object)
-	m.objects[frame] = object
 	return frame
 }
 
-func (f *Frame) Object() *Object {
-	return f.blueprint.active_machine.objects[f]
+func (f *Frame) Object(blueprint_instance *Object) *Object {
+	return blueprint_instance.priv.(*Machine).objects[f]
 }
 
 func (f *Frame) Type() Type {
-	o := f.Object()
+	o := f.Object(TheVM.root)
 	if o == nil {
 		return nil
 	}
@@ -202,8 +186,8 @@ func (f *Frame) Delete() {
 		}
 	}
 	delete(b.frames, f)
-	for m, _ := range b.machines {
-		delete(m.objects, f)
+	for m, _ := range b.instances {
+		delete(m.priv.(*Machine).objects, f)
 	}
 }
 
