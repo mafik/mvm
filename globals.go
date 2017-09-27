@@ -100,7 +100,12 @@ var ExecType Type = &PrimitiveType{
 		out, err := exec.Command(name, cmd_args...).Output()
 		if err != nil {
 			if args["stderr"] != nil {
-				args["stderr"][0].priv = err.(*exec.ExitError).Stderr
+				switch err := err.(type) {
+				case *exec.ExitError:
+					args["stderr"][0].priv = err.Stderr
+				case *exec.Error:
+					args["stderr"][0].priv = []byte(err.Error())
+				}
 			}
 			return
 		}
