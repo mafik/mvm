@@ -205,7 +205,7 @@ func (f FrameLayer) Draw() (widgets Widgets) {
 	for _, frame := range blueprint.Frames() {
 		title := frame.Title()
 		obj := frame.Object(TheVM.active)
-		typ := frame.Type()
+		typ := obj.typ
 		s := ""
 		if obj != nil {
 			s = typ.String(obj.priv)

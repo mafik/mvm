@@ -63,6 +63,7 @@ func Input(e Event) {
 				f.name = f.name[:l-1]
 			}
 		case "Enter":
+			f.param = !f.param
 		default:
 			f.name += e.Key
 		}
@@ -168,11 +169,10 @@ func ProcessEvent(e Event, updates chan string) {
 			GUI.Delete(Pointer)
 		case "Enter":
 			o := Pointer.FindObjectBelow()
-			if o == nil {
-				break
-			}
-			if _, ok := o.typ.(*Blueprint); ok {
-				TheVM.active = o
+			if o != nil {
+				if _, ok := o.typ.(*Blueprint); ok {
+					TheVM.active = o
+				}
 			} else {
 				Input(e)
 			}
@@ -411,7 +411,6 @@ P2
 - Highlighting frames with the right type
 
 TODO:
-- running the "run" object in blueprint
 - blueprint parameter objects
 
 Note: Events in complex objects

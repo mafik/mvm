@@ -28,8 +28,13 @@ func (b *Blueprint) Frames() (out []*Frame) {
 	return out
 }
 
-func (b *Blueprint) Parameters() []Parameter {
-	return nil
+func (b *Blueprint) Parameters() (params []Parameter) {
+	for frame, _ := range b.frames {
+		if frame.param {
+			params = append(params, frame)
+		}
+	}
+	return
 }
 
 func (b *Blueprint) Instantiate(o *Object) {
@@ -55,6 +60,23 @@ func (b *Blueprint) String(interface{}) string {
 	return fmt.Sprintf("%d frames", len(b.Frames()))
 }
 
+type BlueprintParameter struct {
+}
+
+func (p *BlueprintParameter) Instantiate(*Object) {}
+
+func (p *BlueprintParameter) Name() string {
+	return "param"
+}
+
+func (p *BlueprintParameter) Parameters() []Parameter {
+	return nil
+}
+
+func (p *BlueprintParameter) Run(Args) {}
+
+func (p *BlueprintParameter) String(interface{}) string { return "" }
+
 type Link struct {
 	param_name string
 	source     *Frame
@@ -72,6 +94,7 @@ type Frame struct {
 	size      Vec2
 	name      string
 	link_sets []LinkSet
+	param     bool
 }
 
 type Args map[string][]*Object
@@ -112,6 +135,10 @@ func (vm VM) AvailableBlueprints() (bl []*Blueprint, active int) {
 func (o *Object) MarkForExecution() {
 	o.execute = true
 	tasks <- o
+}
+
+func MakeParameter() *BlueprintParameter {
+	return &BlueprintParameter{}
 }
 
 func MakeBlueprint(name string) *Blueprint {
@@ -173,12 +200,28 @@ func (f *Frame) Parameters() (params []Parameter) {
 	return params
 }
 
+func (f *Frame) Name() string {
+	return f.name
+}
+
+func (f *Frame) Output() bool {
+	return false // TODO: implement
+}
+
+func (f *Frame) Typ() Type {
+	return nil // TODO: implement
+}
+
 func (f *Frame) Title() string {
 	tname := "nil"
 	if t := f.Type(); t != nil {
 		tname = t.Name()
 	}
-	return fmt.Sprintf("%s:%s", f.name, tname)
+	name := fmt.Sprintf("%s:%s", f.name, tname)
+	if f.param {
+		name = "¶" + name
+	}
+	return name
 }
 
 func (f *Frame) Delete() {

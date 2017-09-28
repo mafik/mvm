@@ -164,6 +164,7 @@ type FrameGob struct {
 	Size      Vec2
 	Name      string
 	LinkSets  []LinkSetGob
+	Param     bool
 }
 
 type LinkSetGob struct {
@@ -178,6 +179,7 @@ func (frame *Frame) Gob(s Serializer) Gob {
 		Size:      frame.size,
 		Name:      frame.name,
 		LinkSets:  nil,
+		Param:     frame.param,
 	}
 	for _, link_set := range frame.link_sets {
 		ids := []int{}
@@ -190,7 +192,7 @@ func (frame *Frame) Gob(s Serializer) Gob {
 }
 
 func (gob FrameGob) Ungob() Gobbable {
-	return &Frame{nil, gob.Pos, gob.Size, gob.Name, nil}
+	return &Frame{nil, gob.Pos, gob.Size, gob.Name, nil, gob.Param}
 }
 
 func (frame *Frame) Connect(d Deserializer, gob Gob) {
