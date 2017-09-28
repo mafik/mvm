@@ -153,10 +153,6 @@ func ProcessEvent(e Event, updates chan string) {
 			for _, typ := range Types {
 				menu_types = append(menu_types, typ)
 			}
-			blues, _ := TheVM.AvailableBlueprints()
-			for _, b := range blues {
-				menu_types = append(menu_types, b)
-			}
 			menu_types = append(menu_types, MakeBlueprint("new blueprint"))
 		case "Space":
 			o := Pointer.FindObjectBelow()
@@ -367,6 +363,7 @@ func Update(updates chan string) {
 
 func (o *Object) Args() Args {
 	args := make(Args)
+	args["self"] = append(args["self"], o)
 	m := o.parent.priv.(*Machine)
 	for _, link_set := range o.frame.link_sets {
 		for _, target := range link_set.Targets {

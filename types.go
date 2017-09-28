@@ -40,7 +40,15 @@ func (b *Blueprint) Instantiate(o *Object) {
 }
 
 func (b *Blueprint) Run(args Args) {
-	panic("unimplemented")
+	self := args["self"][0]
+	m := self.priv.(*Machine)
+	for frame, object := range m.objects {
+		if frame.name == "run" {
+			object.MarkForExecution()
+			return
+		}
+	}
+	fmt.Println("Warning, couldn't find a \"run\" frame")
 }
 
 func (b *Blueprint) String(interface{}) string {
