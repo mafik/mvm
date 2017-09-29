@@ -130,7 +130,7 @@ type BlueprintGob struct {
 
 func (blue *Blueprint) Gob(s Serializer) Gob {
 	gob := BlueprintGob{Name: blue.name}
-	for frame, _ := range blue.frames {
+	for _, frame := range blue.frames {
 		gob.Frames = append(gob.Frames, s.Id(frame))
 	}
 	for instance, _ := range blue.instances {
@@ -142,7 +142,7 @@ func (blue *Blueprint) Gob(s Serializer) Gob {
 func (gob BlueprintGob) Ungob() Gobbable {
 	return &Blueprint{
 		name:      gob.Name,
-		frames:    make(map[*Frame]bool),
+		frames:    nil,
 		instances: make(map[*Object]bool),
 	}
 }
@@ -151,7 +151,7 @@ func (blue *Blueprint) Connect(d Deserializer, gob Gob) {
 	blueGob := gob.(BlueprintGob)
 	blue.name = blueGob.Name
 	for _, i := range blueGob.Frames {
-		blue.frames[d.Get(i).(*Frame)] = true
+		blue.frames = append(blue.frames, d.Get(i).(*Frame))
 	}
 	for _, i := range blueGob.Instances {
 		blue.instances[d.Get(i).(*Object)] = true

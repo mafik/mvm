@@ -378,7 +378,11 @@ func (ls *LinkSet) FindParams(blueprint *Object) (objs []*Object) {
 }
 
 func (f *Frame) FindParams(blueprint *Object, param string) []*Object {
-	return f.GetLinkSet(param).FindParams(blueprint)
+	ls := f.GetLinkSet(param)
+	if ls == nil {
+		return nil
+	}
+	return ls.FindParams(blueprint)
 }
 
 func FindObjects(f *Frame, blueprint *Object) (objs []*Object) {
