@@ -145,6 +145,12 @@ func ProcessEvent(e Event, updates chan string) {
 		switch e.Code {
 		case "Tab":
 			nav = true
+		case "CapsLock":
+			o := Pointer.FindObjectBelow()
+			b := o.frame.blueprint
+			f2 := b.AddFrame()
+			b.FillWithCopy(f2, o)
+			Pointer.BeginTouching("CapsLock", GUI.Drag)
 		case "ShiftLeft":
 			Pointer.BeginTouching("Shift", GUI.Drag)
 		case "ControlLeft":
@@ -286,11 +292,15 @@ func ProcessEvent(e Event, updates chan string) {
 			nav = false
 		case "ShiftLeft":
 			Pointer.EndTouching("Shift")
+		case "CapsLock":
+
+			Pointer.EndTouching("CapsLock")
 		case "ControlLeft":
 			if menu != nil && menu_index > 0 {
 				t := menu_types[menu_index-1]
 				blueprint := TheVM.active.typ.(*Blueprint)
-				frame := blueprint.Add(t)
+				frame := blueprint.AddFrame()
+				blueprint.FillWithNew(frame, t)
 				frame.pos = window.ToGlobal(*menu)
 			}
 			menu = nil
@@ -437,7 +447,7 @@ P2
 - Highlighting frames with the right type
 
 TODO:
-- blueprint parameter objects
+- fix object dragging with CapsLock
 
 Note: Events in complex objects
 - complex objects can send many types of events

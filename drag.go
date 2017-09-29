@@ -30,7 +30,9 @@ var LinkTargetType Type = &PrimitiveType{
 }
 
 func (b *Blueprint) MakeLinkTarget() *Frame {
-	return b.Add(LinkTargetType)
+	f := b.AddFrame()
+	b.FillWithNew(f, LinkTargetType)
+	return f
 }
 
 func (HighlightLayer) Drag(*Touch) Touching {

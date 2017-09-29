@@ -44,6 +44,14 @@ func (b *Blueprint) Instantiate(o *Object) {
 	b.instances[o] = true
 }
 
+func (b *Blueprint) Copy(from, to *Object) {
+	b.Instantiate(to)
+	for frame, proto := range from.priv.(*Machine).objects {
+		new := MakeObject(proto.typ, frame, to)
+		proto.typ.Copy(proto, new)
+	}
+}
+
 func (b *Blueprint) Run(args Args) {
 	self := args["self"][0]
 	m := self.priv.(*Machine)
@@ -109,6 +117,7 @@ type Type interface {
 	Name() string
 	Parameters() []Parameter
 	Instantiate(*Object)
+	Copy(from, to *Object)
 	Run(Args)
 	String(interface{}) string
 }
@@ -149,29 +158,41 @@ func MakeBlueprint(name string) *Blueprint {
 	}
 }
 
-func MakeObject(typ Type, frame *Frame) *Object {
+func MakeObject(typ Type, frame *Frame, parent *Object) *Object {
 	o := &Object{
-		typ:   typ,
-		frame: frame,
+		typ:    typ,
+		frame:  frame,
+		parent: parent,
 	}
-	typ.Instantiate(o)
+	if parent != nil {
+		m := parent.priv.(*Machine)
+		m.objects[frame] = o
+	}
 	return o
 }
 
-func (bp *Blueprint) Add(typ Type) *Frame {
+func (bp *Blueprint) AddFrame() *Frame {
 	frame := &Frame{
 		blueprint: bp,
 		pos:       Vec2{0, 0},
 		size:      Vec2{100, 100},
 	}
 	bp.frames = append(bp.frames, frame)
-	for instance, _ := range bp.instances {
-		object := MakeObject(typ, frame)
-		object.parent = instance
-		m := instance.priv.(*Machine)
-		m.objects[frame] = object
-	}
 	return frame
+}
+
+func (bp *Blueprint) FillWithNew(frame *Frame, typ Type) {
+	for instance, _ := range bp.instances {
+		o := MakeObject(typ, frame, instance)
+		typ.Instantiate(o)
+	}
+}
+
+func (bp *Blueprint) FillWithCopy(frame *Frame, proto *Object) {
+	for instance, _ := range bp.instances {
+		o := MakeObject(proto.typ, frame, instance)
+		proto.typ.Copy(proto, o)
+	}
 }
 
 func (f *Frame) Object(blueprint_instance *Object) *Object {

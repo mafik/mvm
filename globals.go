@@ -28,6 +28,7 @@ type PrimitiveType struct {
 	name        string
 	parameters  []Parameter
 	instantiate func(*Object)
+	copy        func(from, to *Object)
 	run         func(Args)
 	string      func(interface{}) string
 }
@@ -46,6 +47,12 @@ func (t *PrimitiveType) Instantiate(o *Object) {
 	}
 }
 
+func (t *PrimitiveType) Copy(from, to *Object) {
+	if t.copy != nil {
+		t.copy(from, to)
+	}
+}
+
 func (t *PrimitiveType) Run(args Args) {
 	t.run(args)
 }
@@ -61,9 +68,10 @@ func (t *PrimitiveType) String(i interface{}) string {
 var TextType Type = &PrimitiveType{
 	name: "text",
 	instantiate: func(me *Object) {
-		var b bytes.Buffer
-		fmt.Fprint(&b, "Hello world!")
-		me.priv = b.Bytes()
+		me.priv = []byte{}
+	},
+	copy: func(from, to *Object) {
+		to.priv = append([]byte{}, from.priv.([]byte)...)
 	},
 	string: func(i interface{}) string {
 		return string(i.([]byte))

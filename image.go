@@ -1,33 +1,14 @@
 package mvm
 
 import (
-	"bytes"
 	"fmt"
 	"io/ioutil"
 	"os"
 )
 
-func MakeEcho(b *Blueprint, pos Vec2, text string) (*Frame, *Frame) {
-	t := b.Add(TextType)
-	t.pos = Add(pos, Vec2{-50, 0})
-	t.size = Vec2{100, 50}
-	var buf bytes.Buffer
-	fmt.Fprint(&buf, text)
-	t.Object(TheVM.active).priv = buf.Bytes()
-
-	exec := b.Add(ExecType)
-	exec.pos = Add(pos, Vec2{100, -180})
-	exec.size = Vec2{100, 50}
-
-	exec.AddLink("unknown", t)
-	return exec, t
-}
-
 func SetupDefault() {
 	welcome := MakeBlueprint("welcome")
-	TheVM.active = MakeObject(welcome, nil)
-	MakeEcho(welcome, Vec2{-100, -50}, "Hello")
-	MakeEcho(welcome, Vec2{100, 50}, "world!")
+	TheVM.active = MakeObject(welcome, nil, nil)
 }
 
 var FileName string = "mvm.img"
