@@ -112,7 +112,7 @@ func ProcessEvent(e Event, updates chan string) {
 	case "Finished":
 		o := e.Object
 		o.running = false
-		for _, object := range o.Args()["then"] {
+		for _, object := range MakeArgs(o.frame, o.parent)["then"] {
 			if object != nil {
 				object.MarkForExecution()
 			}
@@ -361,21 +361,43 @@ func Update(updates chan string) {
 	updates <- string(update)
 }
 
-func (o *Object) Args() Args {
+func MakeArgs(f *Frame, blueprint *Object) Args {
 	args := make(Args)
-	args["self"] = append(args["self"], o)
-	m := o.parent.priv.(*Machine)
-	for _, link_set := range o.frame.link_sets {
-		for _, target := range link_set.Targets {
-			args[link_set.ParamName] = append(args[link_set.ParamName], m.objects[target])
-		}
+	args["self"] = FindObjects(f, blueprint)
+	for _, link_set := range f.link_sets {
+		args[link_set.ParamName] = link_set.FindParams(blueprint)
 	}
 	return args
 }
 
+func (ls *LinkSet) FindParams(blueprint *Object) (objs []*Object) {
+	for _, target := range ls.Targets {
+		objs = append(objs, FindObjects(target, blueprint)...)
+	}
+	return
+}
+
+func (f *Frame) FindParams(blueprint *Object, param string) []*Object {
+	return f.GetLinkSet(param).FindParams(blueprint)
+}
+
+func FindObjects(f *Frame, blueprint *Object) (objs []*Object) {
+	if f.param {
+		objs = blueprint.frame.FindParams(blueprint.parent, f.name)
+	}
+	if len(objs) == 0 {
+		m := blueprint.priv.(*Machine)
+		o := m.objects[f]
+		if o != nil {
+			objs = append(objs, o)
+		}
+	}
+	return
+}
+
 func (o *Object) Run(events chan Event) {
 	typ := o.typ
-	args := o.Args()
+	args := MakeArgs(o.frame, o.parent)
 	fmt.Printf("Running %v...\n", typ.Name())
 	o.running = true
 	o.execute = false
