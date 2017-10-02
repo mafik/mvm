@@ -7,7 +7,7 @@ import (
 )
 
 func SetupDefault() {
-	welcome := MakeBlueprint("welcome")
+	welcome := MakeBlueprint("root")
 	TheVM.active = MakeObject(welcome, nil, nil)
 	welcome.Instantiate(TheVM.active)
 }

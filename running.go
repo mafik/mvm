@@ -50,6 +50,19 @@ func (f *Frame) ParamCenter(i int) Vec2 {
 }
 
 func Input(e Event) {
+	bp := Pointer.FindBlueprintBelow()
+	if bp != nil {
+		switch e.Key {
+		case "Backspace":
+			if l := len(bp.name); l > 0 {
+				bp.name = bp.name[:l-1]
+			}
+		case "Enter":
+		default:
+			bp.name += e.Key
+		}
+		return
+	}
 	o := Pointer.FindObjectBelow()
 	if o == nil {
 		f := Pointer.FindFrameTitleBelow()

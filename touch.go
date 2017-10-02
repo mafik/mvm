@@ -57,6 +57,21 @@ type Container struct {
 
 var Pointer Touch
 
+func (t TouchSnapshot) FindBlueprintBelow() *Blueprint {
+	left := margin
+	right := left + button_width
+	top := margin
+	p := t.Local
+	for it := TheVM.active; it != nil; it = it.parent {
+		bottom := top + button_height
+		if p.X > left && p.X < right && p.Y > top && p.Y < bottom {
+			return it.typ.(*Blueprint)
+		}
+		top += button_height + margin
+	}
+	return nil
+}
+
 func (t TouchSnapshot) FindFrameBelow() *Frame {
 	for _, frame := range TheVM.active.typ.(*Blueprint).Frames() {
 		if frame.HitTest(t.Global) {
