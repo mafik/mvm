@@ -169,20 +169,21 @@ func (w *Widgets) Line(a, b Vec2) *LineWidget {
 }
 
 type CircleWidget struct {
-	Color string
-	R     float64
+	Fill   string
+	Stroke string
+	R      float64
 }
 
-func MakeCircle(r float64, color string) *Widget {
-	return &Widget{"circle", Vec2{0, 0}, 1, &CircleWidget{color, r}}
+func MakeCircle(r float64, fill, stroke string) *Widget {
+	return &Widget{"circle", Vec2{0, 0}, 1, &CircleWidget{fill, stroke, r}}
 }
 
 func MakeArrow() *Widget {
 	return &Widget{"arrow", Vec2{0, 0}, 1, nil}
 }
 
-func (w *Widgets) Circle(pos Vec2, r float64, color string) {
-	w.AppendGlobal("circle", pos, &CircleWidget{color, r})
+func (w *Widgets) Circle(pos Vec2, r float64, fill, stroke string) {
+	w.AppendGlobal("circle", pos, &CircleWidget{fill, stroke, r})
 }
 
 type HourglassWidget struct {
@@ -227,18 +228,30 @@ func (f FrameLayer) Draw() (widgets Widgets) {
 
 func (p ParamLayer) Draw() (widgets Widgets) {
 	for _, frame := range TheVM.active.typ.(*Blueprint).Frames() {
+		local_params := frame.LocalParameters()
+		type_params := frame.Type().Parameters()
 		params := frame.Parameters()
-		if param_count := len(params); param_count > 0 {
+		n := len(params)
+		if n > 0 {
 			widgets.Line(
 				Sub(frame.ParamCenter(0), Vec2{0, param_r + margin}),
-				frame.ParamCenter(param_count-1))
-			for j, param := range params {
-				pos := frame.ParamCenter(j)
-				widgets.Circle(pos, param_r, "#fff")
-				pos.Y -= 1
-				pos.X += param_r + margin
-				widgets.Text(param.Name(), pos)
+				frame.ParamCenter(n-1))
+		}
+
+		for i, param := range params {
+			pos := frame.ParamCenter(i)
+			fill := ""
+			if idx, _ := GetParam(type_params, param.Name()); idx >= 0 {
+				fill = "#fff"
 			}
+			stroke := ""
+			if idx, _ := GetParam(local_params, param.Name()); idx >= 0 {
+				stroke = "#000"
+			}
+			widgets.Circle(pos, param_r, fill, stroke)
+			pos.Y -= 1
+			pos.X += param_r + margin
+			widgets.Text(param.Name(), pos)
 		}
 	}
 	return

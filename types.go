@@ -207,16 +207,23 @@ func (f *Frame) Type() Type {
 	return o.typ
 }
 
-func (f *Frame) Parameters() (params []Parameter) {
-	if typ := f.Type(); typ != nil {
-		params = typ.Parameters()
-	}
+func (f *Frame) LocalParameters() (params []Parameter) {
 	for _, link_set := range f.link_sets {
-		_, existing := GetParam(params, link_set.ParamName)
-		if existing != nil {
-			continue
-		}
 		params = append(params, &FixedParameter{link_set.ParamName, nil, false})
+	}
+	return params
+}
+
+func (f *Frame) Parameters() (params []Parameter) {
+	params = f.LocalParameters()
+	if typ := f.Type(); typ != nil {
+		for _, tp := range typ.Parameters() {
+			_, existing := GetParam(params, tp.Name())
+			if existing != nil {
+				continue
+			}
+			params = append(params, tp)
+		}
 	}
 	return params
 }
@@ -324,11 +331,11 @@ func (frame *Frame) DrawLinks(widgets *Widgets) {
 			line := widgets.Line(link.StartPos(), link.EndPos())
 			_, param := GetParam(params, link_set.ParamName)
 			if param.Output() {
-				line.Start = MakeCircle(param_r/4, "#000")
+				line.Start = MakeCircle(param_r/4, "#000", "")
 				line.End = MakeArrow()
 			} else {
 				line.Start = MakeArrow()
-				line.End = MakeCircle(param_r/4, "#000")
+				line.End = MakeCircle(param_r/4, "#000", "")
 			}
 			line.Middle = MakeText(fmt.Sprint(i))
 			line.Middle.Scale = .75

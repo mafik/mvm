@@ -359,7 +359,7 @@ func ProcessEvent(e Event, updates chan string) {
 	}
 }
 
-var param_r float64 = 15.0
+var param_r float64 = 16.0
 
 func Update(updates chan string) {
 	widgets := Widgets{}

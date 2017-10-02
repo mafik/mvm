@@ -170,8 +170,13 @@ function circle(value) {
   ctx.beginPath();
   ctx.arc(0, 0, value.R, 0, 2*Math.PI, false);
   ctx.closePath();
-  ctx.fillStyle = value.Color || "#f00";
+  ctx.fillStyle = value.Fill || "#ddd";
   ctx.fill();
+  if (value.Stroke) {
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = value.Stroke;
+    ctx.stroke();
+  }
 }
 
 var socket = new WebSocket("ws://localhost:8000/events");
