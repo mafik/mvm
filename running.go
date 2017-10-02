@@ -70,6 +70,7 @@ func Input(e Event) {
 			return
 		}
 
+		initial_name := f.name
 		switch e.Key {
 		case "Backspace":
 			if l := len(f.name); l > 0 {
@@ -79,6 +80,20 @@ func Input(e Event) {
 			f.param = !f.param
 		default:
 			f.name += e.Key
+		}
+		if f.param {
+			b := f.blueprint
+			for instance, _ := range b.instances {
+				if instance.frame == nil {
+					continue
+				}
+				for i, _ := range instance.frame.link_sets {
+					ls := &instance.frame.link_sets[i]
+					if ls.ParamName == initial_name {
+						ls.ParamName = f.name
+					}
+				}
+			}
 		}
 		return
 	}
