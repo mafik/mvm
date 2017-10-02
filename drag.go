@@ -104,6 +104,10 @@ func (FrameLayer) Drag(t *Touch) Touching {
 	return &FrameDragging{frame, cell}
 }
 
+func (f *Frame) Drag(t *Touch) Touching {
+	return &FrameDragging{f, Vec2{0, 0}}
+}
+
 type FrameDragging struct {
 	frame *Frame
 	cell  Vec2

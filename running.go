@@ -149,8 +149,10 @@ func ProcessEvent(e Event, updates chan string) {
 			o := Pointer.FindObjectBelow()
 			b := o.frame.blueprint
 			f2 := b.AddFrame()
+			f2.pos = o.frame.pos
+			f2.size = o.frame.size
 			b.FillWithCopy(f2, o)
-			Pointer.BeginTouching("CapsLock", GUI.Drag)
+			Pointer.BeginTouching("CapsLock", f2.Drag)
 		case "ShiftLeft":
 			Pointer.BeginTouching("Shift", GUI.Drag)
 		case "ControlLeft":
