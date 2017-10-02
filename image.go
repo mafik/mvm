@@ -9,6 +9,7 @@ import (
 func SetupDefault() {
 	welcome := MakeBlueprint("welcome")
 	TheVM.active = MakeObject(welcome, nil, nil)
+	welcome.Instantiate(TheVM.active)
 }
 
 var FileName string = "mvm.img"
