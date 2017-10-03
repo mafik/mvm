@@ -321,6 +321,9 @@ func (link *Link) Delete() {
 func (frame *Frame) DrawLinks(widgets *Widgets) {
 	params := frame.Parameters()
 	for _, frame_parameter := range frame.params {
+		if frame_parameter.Target == nil {
+			continue
+		}
 		link := Link{frame_parameter.Name, frame}
 		line := widgets.Line(link.StartPos(), link.EndPos())
 		_, param := GetParam(params, frame_parameter.Name)
