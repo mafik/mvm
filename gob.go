@@ -163,13 +163,13 @@ type FrameGob struct {
 	Pos       Vec2
 	Size      Vec2
 	Name      string
-	LinkSets  []LinkSetGob
+	Params    []FrameParameterGob
 	Param     bool
 }
 
-type LinkSetGob struct {
-	ParamName string
-	Targets   []int
+type FrameParameterGob struct {
+	Name   string
+	Target int
 }
 
 func (frame *Frame) Gob(s Serializer) Gob {
@@ -178,15 +178,12 @@ func (frame *Frame) Gob(s Serializer) Gob {
 		Pos:       frame.pos,
 		Size:      frame.size,
 		Name:      frame.name,
-		LinkSets:  nil,
+		Params:    nil,
 		Param:     frame.param,
 	}
-	for _, link_set := range frame.link_sets {
-		ids := []int{}
-		for _, target := range link_set.Targets {
-			ids = append(ids, s.Id(target))
-		}
-		gob.LinkSets = append(gob.LinkSets, LinkSetGob{link_set.ParamName, ids})
+	for _, frame_parameter := range frame.params {
+		id := s.Id(frame_parameter.Target)
+		gob.Params = append(gob.Params, FrameParameterGob{frame_parameter.Name, id})
 	}
 	return gob
 }
@@ -198,12 +195,9 @@ func (gob FrameGob) Ungob() Gobbable {
 func (frame *Frame) Connect(d Deserializer, gob Gob) {
 	frameGob := gob.(FrameGob)
 	frame.blueprint = d.Get(frameGob.Blueprint).(*Blueprint)
-	for _, links_gob := range frameGob.LinkSets {
-		targets := []*Frame{}
-		for _, target := range links_gob.Targets {
-			targets = append(targets, d.Get(target).(*Frame))
-		}
-		frame.link_sets = append(frame.link_sets, LinkSet{links_gob.ParamName, targets})
+	for _, links_gob := range frameGob.Params {
+		target := d.Get(links_gob.Target).(*Frame)
+		frame.params = append(frame.params, FrameParameter{links_gob.Name, target})
 	}
 }
 

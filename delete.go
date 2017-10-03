@@ -39,3 +39,7 @@ func (HighlightLayer) Delete(t Touch) Touching {
 func (ParamLayer) Delete(t Touch) Touching {
 	return nil
 }
+
+func (BackgroundLayer) Delete(t Touch) Touching {
+	return nil
+}

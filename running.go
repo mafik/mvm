@@ -37,12 +37,14 @@ var GUI LayerList = []Layer{
 	FrameLayer{},
 	ParamLayer{},
 	LinkLayer{},
+	BackgroundLayer{},
 }
 
 type HighlightLayer struct{}
 type FrameLayer struct{}
 type ParamLayer struct{}
 type LinkLayer struct{}
+type BackgroundLayer struct{}
 
 // Menu
 var menu *Vec2
@@ -94,10 +96,10 @@ func Input(e Event) {
 				if instance.frame == nil {
 					continue
 				}
-				for i, _ := range instance.frame.link_sets {
-					ls := &instance.frame.link_sets[i]
-					if ls.ParamName == initial_name {
-						ls.ParamName = f.name
+				for i, _ := range instance.frame.params {
+					ls := &instance.frame.params[i]
+					if ls.Name == initial_name {
+						ls.Name = f.name
 					}
 				}
 			}
@@ -147,10 +149,9 @@ func ProcessEvent(e Event, updates chan string) {
 	case "Finished":
 		o := e.Object
 		o.running = false
-		for _, object := range MakeArgs(o.frame, o.parent)["then"] {
-			if object != nil {
-				object.MarkForExecution()
-			}
+		object := MakeArgs(o.frame, o.parent)["then"]
+		if object != nil {
+			object.MarkForExecution()
 		}
 	case "Interrupt":
 		fmt.Println("Received SIGINT - saving the image and exiting")
@@ -182,6 +183,9 @@ func ProcessEvent(e Event, updates chan string) {
 			nav = true
 		case "CapsLock":
 			o := Pointer.FindObjectBelow()
+			if o == nil {
+				break
+			}
 			b := o.frame.blueprint
 			f2 := b.AddFrame()
 			f2.pos = o.frame.pos
@@ -406,38 +410,32 @@ func Update(updates chan string) {
 
 func MakeArgs(f *Frame, blueprint *Object) Args {
 	args := make(Args)
-	args["self"] = FindObjects(f, blueprint)
-	for _, link_set := range f.link_sets {
-		args[link_set.ParamName] = link_set.FindParams(blueprint)
+	args["self"] = FindObject(f, blueprint)
+	for _, frame_parameter := range f.params {
+		args[frame_parameter.Name] = frame_parameter.FindParam(blueprint)
 	}
 	return args
 }
 
-func (ls *LinkSet) FindParams(blueprint *Object) (objs []*Object) {
-	for _, target := range ls.Targets {
-		objs = append(objs, FindObjects(target, blueprint)...)
-	}
-	return
+func (ls *FrameParameter) FindParam(blueprint *Object) *Object {
+	return FindObject(ls.Target, blueprint)
 }
 
-func (f *Frame) FindParams(blueprint *Object, param string) []*Object {
+func (f *Frame) FindParam(blueprint *Object, param string) *Object {
 	ls := f.GetLinkSet(param)
 	if ls == nil {
 		return nil
 	}
-	return ls.FindParams(blueprint)
+	return ls.FindParam(blueprint)
 }
 
-func FindObjects(f *Frame, blueprint *Object) (objs []*Object) {
+func FindObject(f *Frame, blueprint *Object) (o *Object) {
 	if f.param {
-		objs = blueprint.frame.FindParams(blueprint.parent, f.name)
+		o = blueprint.frame.FindParam(blueprint.parent, f.name)
 	}
-	if len(objs) == 0 {
+	if o == nil {
 		m := blueprint.priv.(*Machine)
-		o := m.objects[f]
-		if o != nil {
-			objs = append(objs, o)
-		}
+		o = m.objects[f]
 	}
 	return
 }

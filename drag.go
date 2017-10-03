@@ -130,3 +130,7 @@ func (d *FrameDragging) Move(t *Touch) {
 }
 
 func (*FrameDragging) End(*Touch) {}
+
+func (BackgroundLayer) Drag(t *Touch) Touching {
+	return nil
+}

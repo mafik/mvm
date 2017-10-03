@@ -81,14 +81,11 @@ var TextType Type = &PrimitiveType{
 var FormatType Type = &PrimitiveType{
 	name: "format",
 	run: func(args Args) {
-		format := string(args["fmt"][0].priv.([]byte))
-		var fmt_args []interface{}
-		for _, o := range args["args"] {
-			fmt_args = append(fmt_args, o.priv)
-		}
+		format := string(args["fmt"].priv.([]byte))
+		fmt_args := []interface{}{args["args"].priv}
 		var buf bytes.Buffer
 		fmt.Fprintf(&buf, format, fmt_args...)
-		args["output"][0].priv = buf.Bytes()
+		args["output"].priv = buf.Bytes()
 	},
 	parameters: []Parameter{
 		&FixedParameter{name: "output", typ: TextType},
@@ -100,24 +97,24 @@ var FormatType Type = &PrimitiveType{
 var ExecType Type = &PrimitiveType{
 	name: "exec",
 	run: func(args Args) {
-		name := TextType.String(args["command"][0].priv)
-		var cmd_args []string
-		for _, o := range args["args"] {
-			cmd_args = append(cmd_args, TextType.String(o.priv))
+		name := TextType.String(args["command"].priv)
+		cmd_args := []string{}
+		if args["args"] != nil {
+			cmd_args = append(cmd_args, TextType.String(args["args"].priv))
 		}
 		out, err := exec.Command(name, cmd_args...).Output()
 		if err != nil {
 			if args["stderr"] != nil {
 				switch err := err.(type) {
 				case *exec.ExitError:
-					args["stderr"][0].priv = err.Stderr
+					args["stderr"].priv = err.Stderr
 				case *exec.Error:
-					args["stderr"][0].priv = []byte(err.Error())
+					args["stderr"].priv = []byte(err.Error())
 				}
 			}
 			return
 		}
-		args["stdout"][0].priv = out
+		args["stdout"].priv = out
 	},
 	parameters: []Parameter{
 		&FixedParameter{name: "command", typ: TextType},

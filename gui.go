@@ -263,3 +263,7 @@ func (l LinkLayer) Draw() (widgets Widgets) {
 	}
 	return
 }
+
+func (BackgroundLayer) Draw() (widgets Widgets) {
+	return
+}

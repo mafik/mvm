@@ -53,7 +53,7 @@ func (b *Blueprint) Copy(from, to *Object) {
 }
 
 func (b *Blueprint) Run(args Args) {
-	self := args["self"][0]
+	self := args["self"]
 	m := self.priv.(*Machine)
 	for frame, object := range m.objects {
 		if frame.name == "run" {
@@ -88,12 +88,11 @@ func (p *BlueprintParameter) String(interface{}) string { return "" }
 type Link struct {
 	param_name string
 	source     *Frame
-	index      int
 }
 
-type LinkSet struct {
-	ParamName string
-	Targets   []*Frame
+type FrameParameter struct {
+	Name   string
+	Target *Frame
 }
 
 type Frame struct {
@@ -101,11 +100,11 @@ type Frame struct {
 	pos       Vec2
 	size      Vec2
 	name      string
-	link_sets []LinkSet
+	params    []FrameParameter
 	param     bool
 }
 
-type Args map[string][]*Object
+type Args map[string]*Object
 
 type Parameter interface {
 	Name() string
@@ -208,8 +207,8 @@ func (f *Frame) Type() Type {
 }
 
 func (f *Frame) LocalParameters() (params []Parameter) {
-	for _, link_set := range f.link_sets {
-		params = append(params, &FixedParameter{link_set.ParamName, nil, false})
+	for _, frame_parameter := range f.params {
+		params = append(params, &FixedParameter{frame_parameter.Name, nil, false})
 	}
 	return params
 }
@@ -259,13 +258,9 @@ func (f *Frame) Delete() {
 		if frame == f {
 			X = x
 		}
-		for s, _ := range frame.link_sets {
-			link_set := &frame.link_sets[s]
-			for i := 0; i < len(link_set.Targets); i++ {
-				if f == link_set.Targets[i] {
-					link_set.Targets = append(link_set.Targets[:i], link_set.Targets[i+1:]...)
-					i--
-				}
+		for s, _ := range frame.params {
+			if f == frame.params[s].Target {
+				frame.params[s].Target = nil
 			}
 		}
 	}
@@ -319,26 +314,22 @@ func (link Link) EndPos() Vec2 {
 }
 
 func (link *Link) Delete() {
-	link_set := link.source.GetLinkSet(link.param_name)
-	link_set.Targets = append(link_set.Targets[:link.index], link_set.Targets[link.index+1:]...)
+	frame_parameter := link.source.GetLinkSet(link.param_name)
+	frame_parameter.Target = nil
 }
 
 func (frame *Frame) DrawLinks(widgets *Widgets) {
 	params := frame.Parameters()
-	for _, link_set := range frame.link_sets {
-		for i, _ := range link_set.Targets {
-			link := Link{link_set.ParamName, frame, i}
-			line := widgets.Line(link.StartPos(), link.EndPos())
-			_, param := GetParam(params, link_set.ParamName)
-			if param.Output() {
-				line.Start = MakeCircle(param_r/4, "#000", "")
-				line.End = MakeArrow()
-			} else {
-				line.Start = MakeArrow()
-				line.End = MakeCircle(param_r/4, "#000", "")
-			}
-			line.Middle = MakeText(fmt.Sprint(i))
-			line.Middle.Scale = .75
+	for _, frame_parameter := range frame.params {
+		link := Link{frame_parameter.Name, frame}
+		line := widgets.Line(link.StartPos(), link.EndPos())
+		_, param := GetParam(params, frame_parameter.Name)
+		if param.Output() {
+			line.Start = MakeCircle(param_r/4, "#000", "")
+			line.End = MakeArrow()
+		} else {
+			line.Start = MakeArrow()
+			line.End = MakeCircle(param_r/4, "#000", "")
 		}
 	}
 }
@@ -352,34 +343,34 @@ func GetParam(params []Parameter, name string) (int, Parameter) {
 	return -1, nil
 }
 
-func (f *Frame) GetLinkSet(param_name string) *LinkSet {
-	for i, link_set := range f.link_sets {
-		if link_set.ParamName == param_name {
-			return &f.link_sets[i]
+func (f *Frame) GetLinkSet(param_name string) *FrameParameter {
+	for i, frame_parameter := range f.params {
+		if frame_parameter.Name == param_name {
+			return &f.params[i]
 		}
 	}
 	return nil
 }
 
-func (f *Frame) ForceGetLinkSet(param_name string) *LinkSet {
+func (f *Frame) ForceGetLinkSet(param_name string) *FrameParameter {
 	links := f.GetLinkSet(param_name)
 	if links == nil {
-		f.link_sets = append(f.link_sets, LinkSet{param_name, nil})
-		links = &f.link_sets[len(f.link_sets)-1]
+		f.params = append(f.params, FrameParameter{param_name, nil})
+		links = &f.params[len(f.params)-1]
 	}
 	return links
 }
 
 func (f *Frame) AddLink(param_name string, target *Frame) *Link {
-	link_set := f.ForceGetLinkSet(param_name)
-	link_set.Targets = append(link_set.Targets, target)
-	return &Link{param_name, f, len(link_set.Targets) - 1}
+	frame_parameter := f.ForceGetLinkSet(param_name)
+	frame_parameter.Target = target
+	return &Link{param_name, f}
 }
 
 func (l *Link) SetTarget(target *Frame) {
-	l.source.ForceGetLinkSet(l.param_name).Targets[l.index] = target
+	l.source.ForceGetLinkSet(l.param_name).Target = target
 }
 
 func (l *Link) B() *Frame {
-	return l.source.ForceGetLinkSet(l.param_name).Targets[l.index]
+	return l.source.ForceGetLinkSet(l.param_name).Target
 }
