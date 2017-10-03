@@ -123,6 +123,9 @@ func (t TouchSnapshot) PointedLink() (best *Link) {
 	best_dist := 8.0
 	for _, frame := range TheVM.active.typ.(*Blueprint).frames {
 		for _, frame_parameter := range frame.params {
+			if frame_parameter.Target == nil {
+				continue
+			}
 			link := &Link{frame_parameter.Name, frame}
 			current_dist := LinkDist(t.Global, link)
 			if current_dist < best_dist {
