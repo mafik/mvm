@@ -50,11 +50,6 @@ type NoopTouching struct{}
 func (noop NoopTouching) Move(*Touch) {}
 func (noop NoopTouching) End(*Touch)  {}
 
-// Container of touchable elements
-type Container struct {
-	elements []interface{}
-}
-
 var Pointer Touch
 
 func (t TouchSnapshot) FindBlueprintBelow() *Blueprint {

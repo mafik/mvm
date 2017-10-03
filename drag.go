@@ -7,8 +7,8 @@ type Draggable interface {
 	Drag(*Touch) Touching
 }
 
-func (c *Container) Drag(touch *Touch) Touching {
-	for _, elem := range c.elements {
+func (c *LayerList) Drag(touch *Touch) Touching {
+	for _, elem := range *c {
 		if drag, ok := elem.(Draggable); ok {
 			if t := drag.Drag(touch); t != nil {
 				return t

@@ -23,13 +23,20 @@ func (w *Window) ToGlobal(v Vec2) Vec2 {
 var window Window = Window{1, Vec2{0, 0}, Vec2{0, 0}}
 var nav bool
 
-var GUI Container = Container{
-	elements: []interface{}{
-		HighlightLayer{},
-		FrameLayer{},
-		ParamLayer{},
-		LinkLayer{},
-	},
+type Layer interface {
+	Drawable
+	Deletable
+	Draggable
+}
+
+// LayerList of touchable elements
+type LayerList []Layer
+
+var GUI LayerList = []Layer{
+	HighlightLayer{},
+	FrameLayer{},
+	ParamLayer{},
+	LinkLayer{},
 }
 
 type HighlightLayer struct{}
@@ -363,12 +370,8 @@ var param_r float64 = 16.0
 
 func Update(updates chan string) {
 	widgets := Widgets{}
-	for _, l := range GUI.elements {
-		if drawable, ok := l.(Drawable); ok {
-			widgets.slice = append(widgets.slice, drawable.Draw().slice...)
-		} else {
-			fmt.Println("Warning: found non-Drawable layer")
-		}
+	for _, l := range GUI {
+		widgets.slice = append(widgets.slice, l.Draw().slice...)
 	}
 
 	bar := widgets.ButtonList().AlignTop(0).AlignLeft(0).Colors2("#000", "#fff", "#444", "#bbb")

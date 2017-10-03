@@ -5,12 +5,10 @@ type Deletable interface {
 	Delete(Touch) Touching
 }
 
-func (c *Container) Delete(touch Touch) Touching {
-	for _, elem := range c.elements {
-		if del, ok := elem.(Deletable); ok {
-			if t := del.Delete(touch); t != nil {
-				return t
-			}
+func (c *LayerList) Delete(touch Touch) Touching {
+	for _, elem := range *c {
+		if t := elem.Delete(touch); t != nil {
+			return t
 		}
 	}
 	return nil
@@ -32,4 +30,12 @@ func (LinkLayer) Delete(t Touch) Touching {
 	}
 	deleted.Delete()
 	return NoopTouching{}
+}
+
+func (HighlightLayer) Delete(t Touch) Touching {
+	return nil
+}
+
+func (ParamLayer) Delete(t Touch) Touching {
+	return nil
 }
