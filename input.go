@@ -118,7 +118,7 @@ func (OverlayLayer) Input(t *Touch, e Event) Touching {
 
 	switch e.Code {
 	case "Tab":
-		nav = true
+		nav = true // TODO: implement Touching interface instead
 		return NoopTouching{}
 	case "CapsLock":
 		o := Pointer.FindObjectBelow()
@@ -182,6 +182,8 @@ func (ObjectLayer) Input(t *Touch, e Event) Touching {
 		o.priv = buf.Bytes()
 	} else if e.Code == "Space" {
 		o.MarkForExecution()
+	} else {
+		return nil
 	}
 	return NoopTouching{}
 }
@@ -189,9 +191,14 @@ func (ObjectLayer) Input(t *Touch, e Event) Touching {
 func (FrameLayer) Input(t *Touch, e Event) Touching {
 	f := Pointer.FindFrameTitleBelow()
 	if f == nil {
+		f = Pointer.FindFrameBelow()
+	}
+	if f == nil {
 		return nil
 	}
-	if e.Key == "Enter" {
+	if e.Code == "KeyR" {
+		f.params = append(f.params, FrameParameter{"", nil})
+	} else if e.Code == "Enter" {
 		f.param = !f.param
 	} else {
 		initial_name := f.name
@@ -215,7 +222,13 @@ func (FrameLayer) Input(t *Touch, e Event) Touching {
 }
 
 func (ParamLayer) Input(t *Touch, e Event) Touching {
-	return nil
+	frame, name := Pointer.FindParamBelow()
+	if frame == nil {
+		return nil
+	}
+	frameParam := frame.ForceGetLinkSet(name)
+	frameParam.Name = Edit(frameParam.Name, e)
+	return NoopTouching{}
 }
 
 func (LinkLayer) Input(t *Touch, e Event) Touching {

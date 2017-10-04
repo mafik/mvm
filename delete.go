@@ -41,7 +41,16 @@ func (OverlayLayer) Delete(t Touch) Touching {
 }
 
 func (ParamLayer) Delete(t Touch) Touching {
-	return nil
+	frame, name := Pointer.FindParamBelow()
+	if frame == nil {
+		return nil
+	}
+	index, _ := GetParam(frame.LocalParameters(), name)
+	if index == -1 {
+		return nil
+	}
+	frame.params = append(frame.params[:index], frame.params[index+1:]...)
+	return NoopTouching{}
 }
 
 func (BackgroundLayer) Delete(t Touch) Touching {

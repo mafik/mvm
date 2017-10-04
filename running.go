@@ -42,8 +42,8 @@ var GUI LayerList = []Layer{
 	OverlayLayer{},
 	ObjectLayer{},
 	FrameLayer{},
-	ParamLayer{},
 	LinkLayer{},
+	ParamLayer{},
 	BackgroundLayer{},
 }
 
