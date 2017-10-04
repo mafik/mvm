@@ -104,7 +104,7 @@ func (ll *LayerList) Input(t *Touch, e Event) Touching {
 			return ret
 		}
 	}
-	fmt.Println("Unhandled", e.Type, e.Code, e.Key)
+	fmt.Println("Unhandled", e.Type, ", Code:", e.Code, ", Key:", e.Key)
 	return nil
 }
 
@@ -156,40 +156,10 @@ func (OverlayLayer) Input(t *Touch, e Event) Touching {
 	}
 }
 
-func (FrameLayer) Input(t *Touch, e Event) Touching {
+func (ObjectLayer) Input(t *Touch, e Event) Touching {
 	o := Pointer.FindObjectBelow()
 	if o == nil {
-		f := Pointer.FindFrameTitleBelow()
-		if f == nil {
-			return nil
-		}
-
-		initial_name := f.name
-		switch e.Key {
-		case "Backspace":
-			if l := len(f.name); l > 0 {
-				f.name = f.name[:l-1]
-			}
-		case "Enter":
-			f.param = !f.param
-		default:
-			f.name += e.Key
-		}
-		if f.param {
-			b := f.blueprint
-			for instance, _ := range b.instances {
-				if instance.frame == nil {
-					continue
-				}
-				for i, _ := range instance.frame.params {
-					ls := &instance.frame.params[i]
-					if ls.Name == initial_name {
-						ls.Name = f.name
-					}
-				}
-			}
-		}
-		return NoopTouching{}
+		return nil
 	}
 	if _, ok := o.typ.(*Blueprint); e.Code == "Enter" && ok {
 		TheVM.active = o
@@ -212,6 +182,34 @@ func (FrameLayer) Input(t *Touch, e Event) Touching {
 		o.priv = buf.Bytes()
 	} else if e.Code == "Space" {
 		o.MarkForExecution()
+	}
+	return NoopTouching{}
+}
+
+func (FrameLayer) Input(t *Touch, e Event) Touching {
+	f := Pointer.FindFrameTitleBelow()
+	if f == nil {
+		return nil
+	}
+	if e.Key == "Enter" {
+		f.param = !f.param
+	} else {
+		initial_name := f.name
+		f.name = Edit(f.name, e)
+		if f.param {
+			b := f.blueprint
+			for instance, _ := range b.instances {
+				if instance.frame == nil {
+					continue
+				}
+				for i, _ := range instance.frame.params {
+					ls := &instance.frame.params[i]
+					if ls.Name == initial_name {
+						ls.Name = f.name
+					}
+				}
+			}
+		}
 	}
 	return NoopTouching{}
 }

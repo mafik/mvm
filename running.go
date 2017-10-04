@@ -32,6 +32,7 @@ type Layer interface {
 // LayerList of touchable elements
 type LayerList []Layer
 type OverlayLayer struct{}
+type ObjectLayer struct{}
 type FrameLayer struct{}
 type ParamLayer struct{}
 type LinkLayer struct{}
@@ -39,6 +40,7 @@ type BackgroundLayer struct{}
 
 var GUI LayerList = []Layer{
 	OverlayLayer{},
+	ObjectLayer{},
 	FrameLayer{},
 	ParamLayer{},
 	LinkLayer{},

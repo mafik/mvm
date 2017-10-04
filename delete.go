@@ -14,6 +14,10 @@ func (c *LayerList) Delete(touch Touch) Touching {
 	return nil
 }
 
+func (ObjectLayer) Delete(t Touch) Touching {
+	return nil
+}
+
 func (FrameLayer) Delete(t Touch) Touching {
 	deleted := t.FindFrameBelow()
 	if deleted == nil {

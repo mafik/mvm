@@ -203,7 +203,11 @@ func (OverlayLayer) Draw() (widgets Widgets) {
 	return
 }
 
-func (f FrameLayer) Draw() (widgets Widgets) {
+func (ObjectLayer) Draw() (widgets Widgets) {
+	return
+}
+
+func (FrameLayer) Draw() (widgets Widgets) {
 	blueprint := TheVM.active.typ.(*Blueprint)
 	for _, frame := range blueprint.Frames() {
 		title := frame.Title()

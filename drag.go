@@ -69,6 +69,10 @@ func (l *Link) End(touch *Touch) {
 	}
 }
 
+func (ObjectLayer) Drag(t *Touch) Touching {
+	return nil
+}
+
 // Frames
 
 func (FrameLayer) Drag(t *Touch) Touching {
