@@ -109,7 +109,6 @@ type Args map[string]*Object
 type Parameter interface {
 	Name() string
 	Typ() Type
-	Output() bool
 }
 
 type Type interface {
@@ -208,7 +207,7 @@ func (f *Frame) Type() Type {
 
 func (f *Frame) LocalParameters() (params []Parameter) {
 	for _, frame_parameter := range f.params {
-		params = append(params, &FixedParameter{frame_parameter.Name, nil, false})
+		params = append(params, &FixedParameter{frame_parameter.Name, nil})
 	}
 	return params
 }
@@ -229,10 +228,6 @@ func (f *Frame) Parameters() (params []Parameter) {
 
 func (f *Frame) Name() string {
 	return f.name
-}
-
-func (f *Frame) Output() bool {
-	return false // TODO: implement
 }
 
 func (f *Frame) Typ() Type {
@@ -318,7 +313,6 @@ func (link *Link) Delete() {
 }
 
 func (frame *Frame) DrawLinks(widgets *Widgets) {
-	params := frame.Parameters()
 	for i, _ := range frame.params {
 		frame_parameter := &frame.params[i]
 		if frame_parameter.Target == nil {
@@ -326,14 +320,8 @@ func (frame *Frame) DrawLinks(widgets *Widgets) {
 		}
 		link := Link{frame, frame_parameter}
 		line := widgets.Line(link.StartPos(), link.EndPos())
-		_, param := GetParam(params, frame_parameter.Name)
-		if param.Output() {
-			line.Start = MakeCircle(param_r/4, "#000", "")
-			line.End = MakeArrow()
-		} else {
-			line.Start = MakeArrow()
-			line.End = MakeCircle(param_r/4, "#000", "")
-		}
+		line.Start = MakeCircle(param_r/4, "#000", "")
+		line.End = MakeArrow()
 	}
 }
 

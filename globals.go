@@ -7,9 +7,8 @@ import (
 )
 
 type FixedParameter struct {
-	name   string
-	typ    Type
-	output bool
+	name string
+	typ  Type
 }
 
 func (p *FixedParameter) Name() string {
@@ -18,10 +17,6 @@ func (p *FixedParameter) Name() string {
 
 func (p *FixedParameter) Typ() Type {
 	return p.typ
-}
-
-func (p *FixedParameter) Output() bool {
-	return p.output
 }
 
 type PrimitiveType struct {
@@ -119,8 +114,8 @@ var ExecType Type = &PrimitiveType{
 	parameters: []Parameter{
 		&FixedParameter{name: "command", typ: TextType},
 		&FixedParameter{name: "args", typ: TextType},
-		&FixedParameter{name: "stdout", typ: TextType, output: true},
-		&FixedParameter{name: "stderr", typ: TextType, output: true},
+		&FixedParameter{name: "stdout", typ: TextType},
+		&FixedParameter{name: "stderr", typ: TextType},
 	},
 }
 
