@@ -86,8 +86,8 @@ func (p *BlueprintParameter) Run(Args) {}
 func (p *BlueprintParameter) String(interface{}) string { return "" }
 
 type Link struct {
-	param_name string
-	source     *Frame
+	source *Frame
+	param  *FrameParameter
 }
 
 type FrameParameter struct {
@@ -303,7 +303,7 @@ func (f *Frame) HitTest(p Vec2) bool {
 }
 
 func (link Link) StartPos() Vec2 {
-	i, _ := GetParam(link.source.Parameters(), link.param_name)
+	i, _ := GetParam(link.source.Parameters(), link.param.Name)
 	return link.source.ParamCenter(i)
 }
 
@@ -314,17 +314,17 @@ func (link Link) EndPos() Vec2 {
 }
 
 func (link *Link) Delete() {
-	frame_parameter := link.source.GetLinkSet(link.param_name)
-	frame_parameter.Target = nil
+	link.param.Target = nil
 }
 
 func (frame *Frame) DrawLinks(widgets *Widgets) {
 	params := frame.Parameters()
-	for _, frame_parameter := range frame.params {
+	for i, _ := range frame.params {
+		frame_parameter := &frame.params[i]
 		if frame_parameter.Target == nil {
 			continue
 		}
-		link := Link{frame_parameter.Name, frame}
+		link := Link{frame, frame_parameter}
 		line := widgets.Line(link.StartPos(), link.EndPos())
 		_, param := GetParam(params, frame_parameter.Name)
 		if param.Output() {
@@ -367,13 +367,13 @@ func (f *Frame) ForceGetLinkSet(param_name string) *FrameParameter {
 func (f *Frame) AddLink(param_name string, target *Frame) *Link {
 	frame_parameter := f.ForceGetLinkSet(param_name)
 	frame_parameter.Target = target
-	return &Link{param_name, f}
+	return &Link{f, frame_parameter}
 }
 
 func (l *Link) SetTarget(target *Frame) {
-	l.source.ForceGetLinkSet(l.param_name).Target = target
+	l.param.Target = target
 }
 
 func (l *Link) B() *Frame {
-	return l.source.ForceGetLinkSet(l.param_name).Target
+	return l.param.Target
 }

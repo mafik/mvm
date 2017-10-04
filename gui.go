@@ -195,11 +195,6 @@ func (w *Widgets) Hourglass(pos Vec2, color string) {
 }
 
 func (OverlayLayer) Draw() (widgets Widgets) {
-	for _, t := range Pointer.Touched {
-		if fd, ok := t.(*FrameDragging); ok {
-			widgets.Rect(Add(fd.frame.pos, Vec2{margin, margin}), fd.frame.size, "#ccc")
-		}
-	}
 	return
 }
 
@@ -271,5 +266,10 @@ func (l LinkLayer) Draw() (widgets Widgets) {
 }
 
 func (BackgroundLayer) Draw() (widgets Widgets) {
+	for _, t := range Pointer.Touched {
+		if fd, ok := t.(*FrameDragging); ok {
+			widgets.Rect(Add(fd.frame.pos, Vec2{margin, margin}), fd.frame.size, "#ccc")
+		}
+	}
 	return
 }

@@ -40,10 +40,10 @@ type BackgroundLayer struct{}
 
 var GUI LayerList = []Layer{
 	OverlayLayer{},
-	ObjectLayer{},
-	FrameLayer{},
 	LinkLayer{},
 	ParamLayer{},
+	ObjectLayer{},
+	FrameLayer{},
 	BackgroundLayer{},
 }
 
@@ -141,8 +141,8 @@ var param_r float64 = 16.0
 
 func Update(updates chan string) {
 	widgets := Widgets{}
-	for _, l := range GUI {
-		widgets.slice = append(widgets.slice, l.Draw().slice...)
+	for i := len(GUI) - 1; i >= 0; i-- {
+		widgets.slice = append(widgets.slice, GUI[i].Draw().slice...)
 	}
 
 	bar := widgets.ButtonList().AlignTop(0).AlignLeft(0).Colors2("#000", "#fff", "#444", "#bbb")
