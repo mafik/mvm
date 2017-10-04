@@ -32,7 +32,7 @@ func (LinkLayer) Delete(t Touch) Touching {
 	return NoopTouching{}
 }
 
-func (HighlightLayer) Delete(t Touch) Touching {
+func (OverlayLayer) Delete(t Touch) Touching {
 	return nil
 }
 

@@ -1,7 +1,5 @@
 package mvm
 
-import "fmt"
-
 // On-screen element that can be dragged around.
 type Draggable interface {
 	Drag(*Touch) Touching
@@ -9,12 +7,8 @@ type Draggable interface {
 
 func (c *LayerList) Drag(touch *Touch) Touching {
 	for _, elem := range *c {
-		if drag, ok := elem.(Draggable); ok {
-			if t := drag.Drag(touch); t != nil {
-				return t
-			}
-		} else {
-			fmt.Println("Warning: found non-Draggable layer")
+		if t := elem.Drag(touch); t != nil {
+			return t
 		}
 	}
 	return nil
@@ -35,7 +29,7 @@ func (b *Blueprint) MakeLinkTarget() *Frame {
 	return f
 }
 
-func (HighlightLayer) Drag(*Touch) Touching {
+func (OverlayLayer) Drag(*Touch) Touching {
 	return nil
 }
 

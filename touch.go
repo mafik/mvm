@@ -8,27 +8,25 @@ type TouchSnapshot struct {
 type Touch struct {
 	TouchSnapshot
 	Last    TouchSnapshot
-	Touched Touching
-	Source  string
+	Touched map[string]Touching
 }
 
 func (t *Touch) BeginTouching(source string, f func(*Touch) Touching) {
-	if t.Touched != nil {
+	if t.Touched[source] != nil {
 		return
 	}
-	touched := f(t)
-	if touched == nil {
+	touching := f(t)
+	if touching == nil {
 		return
 	}
-	t.Touched = touched
-	t.Source = source
+	t.Touched[source] = touching
 }
 
 func (t *Touch) EndTouching(source string) {
-	if t.Source == source {
-		t.Touched.End(t)
-		t.Touched = nil
-		t.Source = ""
+	touching, ok := t.Touched[source]
+	if ok {
+		touching.End(t)
+		delete(t.Touched, source)
 	}
 }
 
@@ -50,7 +48,7 @@ type NoopTouching struct{}
 func (noop NoopTouching) Move(*Touch) {}
 func (noop NoopTouching) End(*Touch)  {}
 
-var Pointer Touch
+var Pointer = Touch{Touched: map[string]Touching{}}
 
 func (t TouchSnapshot) FindBlueprintBelow() *Blueprint {
 	left := margin

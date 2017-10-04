@@ -1,7 +1,6 @@
 package mvm
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -27,24 +26,24 @@ type Layer interface {
 	Drawable
 	Deletable
 	Draggable
+	Input
 }
 
 // LayerList of touchable elements
 type LayerList []Layer
+type OverlayLayer struct{}
+type FrameLayer struct{}
+type ParamLayer struct{}
+type LinkLayer struct{}
+type BackgroundLayer struct{}
 
 var GUI LayerList = []Layer{
-	HighlightLayer{},
+	OverlayLayer{},
 	FrameLayer{},
 	ParamLayer{},
 	LinkLayer{},
 	BackgroundLayer{},
 }
-
-type HighlightLayer struct{}
-type FrameLayer struct{}
-type ParamLayer struct{}
-type LinkLayer struct{}
-type BackgroundLayer struct{}
 
 // Menu
 var menu *Vec2
@@ -56,74 +55,6 @@ func (f *Frame) ParamCenter(i int) Vec2 {
 	ret.X += -f.size.X/2 + param_r
 	ret.Y += float64(i)*(param_r*2+margin) + f.size.Y/2 + margin + param_r
 	return ret
-}
-
-func Input(e Event) {
-	bp := Pointer.FindBlueprintBelow()
-	if bp != nil {
-		switch e.Key {
-		case "Backspace":
-			if l := len(bp.name); l > 0 {
-				bp.name = bp.name[:l-1]
-			}
-		case "Enter":
-		default:
-			bp.name += e.Key
-		}
-		return
-	}
-	o := Pointer.FindObjectBelow()
-	if o == nil {
-		f := Pointer.FindFrameTitleBelow()
-		if f == nil {
-			return
-		}
-
-		initial_name := f.name
-		switch e.Key {
-		case "Backspace":
-			if l := len(f.name); l > 0 {
-				f.name = f.name[:l-1]
-			}
-		case "Enter":
-			f.param = !f.param
-		default:
-			f.name += e.Key
-		}
-		if f.param {
-			b := f.blueprint
-			for instance, _ := range b.instances {
-				if instance.frame == nil {
-					continue
-				}
-				for i, _ := range instance.frame.params {
-					ls := &instance.frame.params[i]
-					if ls.Name == initial_name {
-						ls.Name = f.name
-					}
-				}
-			}
-		}
-		return
-	}
-	if o.typ == TextType {
-		buf := bytes.NewBuffer(o.priv.([]byte))
-		switch e.Key {
-		case "Backspace":
-			cut := true
-			trimmed := bytes.TrimRightFunc(buf.Bytes(), func(r rune) bool {
-				ret := cut
-				cut = false
-				return ret
-			})
-			buf.Truncate(len(trimmed))
-		case "Enter":
-			buf.WriteString("\n")
-		default:
-			buf.WriteString(e.Key)
-		}
-		o.priv = buf.Bytes()
-	}
 }
 
 func (frame *Frame) MarkForExecution() {
@@ -171,181 +102,15 @@ func ProcessEvent(e Event, updates chan string) {
 			window.center.Add(Pointer.Delta())
 		}
 		Pointer.UpdateGlobal()
-		if Pointer.Touched != nil {
-			Pointer.Touched.Move(&Pointer)
+		for _, t := range Pointer.Touched {
+			t.Move(&Pointer)
 		}
-
 	case "MouseDown":
 	case "MouseUp":
 	case "KeyDown":
-		switch e.Code {
-		case "Tab":
-			nav = true
-		case "CapsLock":
-			o := Pointer.FindObjectBelow()
-			if o == nil {
-				break
-			}
-			b := o.frame.blueprint
-			f2 := b.AddFrame()
-			f2.pos = o.frame.pos
-			f2.size = o.frame.size
-			b.FillWithCopy(f2, o)
-			Pointer.BeginTouching("CapsLock", f2.Drag)
-		case "ShiftLeft":
-			Pointer.BeginTouching("Shift", GUI.Drag)
-		case "ControlLeft":
-			local := Pointer.Local
-			menu = &local
-			menu_types = nil
-			for _, typ := range Types {
-				menu_types = append(menu_types, typ)
-			}
-			menu_types = append(menu_types, MakeBlueprint("new blueprint"))
-		case "Space":
-			o := Pointer.FindObjectBelow()
-			if o == nil {
-				break
-			}
-			if o.typ == TextType {
-				Input(e)
-			} else {
-				o.MarkForExecution()
-			}
-		case "Delete":
-			GUI.Delete(Pointer)
-		case "Enter":
-			o := Pointer.FindObjectBelow()
-			if o != nil {
-				if _, ok := o.typ.(*Blueprint); ok {
-					TheVM.active = o
-				}
-			} else {
-				Input(e)
-			}
-		case "Escape":
-			parent := TheVM.active.parent
-			if parent != nil {
-				TheVM.active = parent
-			}
-		case "Backspace":
-			Input(e)
-		case "KeyQ":
-			Input(e)
-		case "KeyW":
-			Input(e)
-		case "KeyE":
-			Input(e)
-		case "KeyR":
-			Input(e)
-		case "KeyT":
-			Input(e)
-		case "KeyY":
-			Input(e)
-		case "KeyU":
-			Input(e)
-		case "KeyI":
-			Input(e)
-		case "KeyO":
-			Input(e)
-		case "KeyP":
-			Input(e)
-		case "BracketLeft":
-			Input(e)
-		case "BracketRight":
-			Input(e)
-		case "Backslash":
-			Input(e)
-		case "KeyA":
-			Input(e)
-		case "KeyS":
-			Input(e)
-		case "KeyD":
-			Input(e)
-		case "KeyF":
-			Input(e)
-		case "KeyG":
-			Input(e)
-		case "KeyH":
-			Input(e)
-		case "KeyJ":
-			Input(e)
-		case "KeyK":
-			Input(e)
-		case "KeyL":
-			Input(e)
-		case "Semicolon":
-			Input(e)
-		case "Quote":
-			Input(e)
-		case "KeyZ":
-			Input(e)
-		case "KeyX":
-			Input(e)
-		case "KeyC":
-			Input(e)
-		case "KeyV":
-			Input(e)
-		case "KeyB":
-			Input(e)
-		case "KeyN":
-			Input(e)
-		case "KeyM":
-			Input(e)
-		case "Comma":
-			Input(e)
-		case "Period":
-			Input(e)
-		case "Slash":
-			Input(e)
-		case "Backquote":
-			Input(e)
-		case "Digit1":
-			Input(e)
-		case "Digit2":
-			Input(e)
-		case "Digit3":
-			Input(e)
-		case "Digit4":
-			Input(e)
-		case "Digit5":
-			Input(e)
-		case "Digit6":
-			Input(e)
-		case "Digit7":
-			Input(e)
-		case "Digit8":
-			Input(e)
-		case "Digit9":
-			Input(e)
-		case "Digit0":
-			Input(e)
-		case "Minus":
-			Input(e)
-		case "Equal":
-			Input(e)
-		default:
-			fmt.Printf("Pressed keycode: %s \"%s\"\n", e.Code, e.Key)
-		}
+		KeyDown(e)
 	case "KeyUp":
-		switch e.Code {
-		case "Tab":
-			nav = false
-		case "ShiftLeft":
-			Pointer.EndTouching("Shift")
-		case "CapsLock":
-
-			Pointer.EndTouching("CapsLock")
-		case "ControlLeft":
-			if menu != nil && menu_index > 0 {
-				t := menu_types[menu_index-1]
-				blueprint := TheVM.active.typ.(*Blueprint)
-				frame := blueprint.AddFrame()
-				blueprint.FillWithNew(frame, t)
-				frame.pos = window.ToGlobal(*menu)
-			}
-			menu = nil
-		}
+		KeyUp(e)
 	case "Wheel":
 		a := Pointer.Global
 		window.scale *= math.Exp(-e.Y / 200)
@@ -382,12 +147,13 @@ func Update(updates chan string) {
 	for it := TheVM.active; it != nil; it = it.parent {
 		bar = bar.Add2(it.typ.Name(), it == TheVM.active)
 	}
+	_, dragging := Pointer.Touched["Shift"]
 	widgets.ButtonList().
 		Dir(-1).
 		AlignLeft(0).
 		AlignBottom(window.size.Y).
 		Add2("navigate", nav).
-		Add2("drag", Pointer.Source == "Shift")
+		Add2("drag", dragging)
 
 	if menu != nil {
 		buttons := widgets.ButtonList().

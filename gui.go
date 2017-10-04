@@ -194,9 +194,11 @@ func (w *Widgets) Hourglass(pos Vec2, color string) {
 	w.AppendGlobal("hourglass", pos, &HourglassWidget{color})
 }
 
-func (h HighlightLayer) Draw() (widgets Widgets) {
-	if fd, ok := Pointer.Touched.(*FrameDragging); ok {
-		widgets.Rect(Add(fd.frame.pos, Vec2{margin, margin}), fd.frame.size, "#ccc")
+func (OverlayLayer) Draw() (widgets Widgets) {
+	for _, t := range Pointer.Touched {
+		if fd, ok := t.(*FrameDragging); ok {
+			widgets.Rect(Add(fd.frame.pos, Vec2{margin, margin}), fd.frame.size, "#ccc")
+		}
 	}
 	return
 }
