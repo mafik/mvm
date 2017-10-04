@@ -114,7 +114,7 @@ type Parameter interface {
 type Type interface {
 	Name() string
 	Parameters() []Parameter
-	Instantiate(*Object)
+	Instantiate(*Object) // TODO: remove
 	Copy(from, to *Object)
 	Run(Args)
 	String(interface{}) string

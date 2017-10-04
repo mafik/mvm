@@ -182,7 +182,10 @@ func (frame *Frame) Gob(s Serializer) Gob {
 		Param:     frame.param,
 	}
 	for _, frame_parameter := range frame.params {
-		id := s.Id(frame_parameter.Target)
+		id := 0
+		if frame_parameter.Target != nil {
+			id = s.Id(frame_parameter.Target)
+		}
 		gob.Params = append(gob.Params, FrameParameterGob{frame_parameter.Name, id})
 	}
 	return gob
@@ -196,7 +199,7 @@ func (frame *Frame) Connect(d Deserializer, gob Gob) {
 	frameGob := gob.(FrameGob)
 	frame.blueprint = d.Get(frameGob.Blueprint).(*Blueprint)
 	for _, links_gob := range frameGob.Params {
-		target := d.Get(links_gob.Target).(*Frame)
+		target, _ := d.Get(links_gob.Target).(*Frame)
 		frame.params = append(frame.params, FrameParameter{links_gob.Name, target})
 	}
 }
