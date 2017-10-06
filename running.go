@@ -34,12 +34,14 @@ type LayerList []Layer
 type OverlayLayer struct{}
 type ObjectLayer struct{}
 type FrameLayer struct{}
+type ParamNameLayer struct{}
 type ParamLayer struct{}
 type LinkLayer struct{}
 type BackgroundLayer struct{}
 
 var GUI LayerList = []Layer{
 	OverlayLayer{},
+	ParamNameLayer{},
 	LinkLayer{},
 	ParamLayer{},
 	ObjectLayer{},
@@ -180,6 +182,9 @@ func MakeArgs(f *Frame, blueprint *Object) Args {
 	args := make(Args)
 	args["self"] = FindObject(f, blueprint)
 	for _, frame_parameter := range f.params {
+		if frame_parameter.Target == nil {
+			continue
+		}
 		args[frame_parameter.Name] = frame_parameter.FindParam(blueprint)
 	}
 	return args

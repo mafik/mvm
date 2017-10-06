@@ -1,5 +1,7 @@
 package mvm
 
+import "math"
+
 type Vec2 struct {
 	X, Y float64
 }
@@ -12,6 +14,10 @@ func (a *Vec2) Add(b Vec2) *Vec2 {
 	a.X += b.X
 	a.Y += b.Y
 	return a
+}
+
+func Len(a Vec2) float64 {
+	return math.Hypot(a.X, a.Y)
 }
 
 func Neg(a Vec2) Vec2 {
@@ -56,4 +62,9 @@ func (a *Vec2) Scale(b float64) *Vec2 {
 	a.X *= b
 	a.Y *= b
 	return a
+}
+
+func ScaleTo(a Vec2, len float64) Vec2 {
+	aLen := Len(a)
+	return Scale(a, len/aLen)
 }

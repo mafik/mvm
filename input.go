@@ -197,7 +197,7 @@ func (FrameLayer) Input(t *Touch, e Event) Touching {
 		return nil
 	}
 	if e.Code == "KeyR" {
-		f.params = append(f.params, FrameParameter{"", nil})
+		f.params = append(f.params, FrameParameter{"", nil, false})
 	} else if e.Code == "Enter" {
 		f.param = !f.param
 	} else {
@@ -232,9 +232,20 @@ func (ParamLayer) Input(t *Touch, e Event) Touching {
 }
 
 func (LinkLayer) Input(t *Touch, e Event) Touching {
+	l := t.PointedLink()
+	if l == nil {
+		return nil
+	}
+	if e.Code == "KeyZ" {
+		l.param.Stiff = !l.param.Stiff
+		if l.param.Stiff {
+			return l.source.Drag(t)
+		} else {
+			return NoopTouching{}
+		}
+	}
 	return nil
 }
 
-func (BackgroundLayer) Input(t *Touch, e Event) Touching {
-	return nil
-}
+func (BackgroundLayer) Input(t *Touch, e Event) Touching { return nil }
+func (ParamNameLayer) Input(*Touch, Event) Touching      { return nil }

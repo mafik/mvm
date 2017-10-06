@@ -170,6 +170,7 @@ type FrameGob struct {
 type FrameParameterGob struct {
 	Name   string
 	Target int
+	Stiff  bool
 }
 
 func (frame *Frame) Gob(s Serializer) Gob {
@@ -186,7 +187,7 @@ func (frame *Frame) Gob(s Serializer) Gob {
 		if frame_parameter.Target != nil {
 			id = s.Id(frame_parameter.Target)
 		}
-		gob.Params = append(gob.Params, FrameParameterGob{frame_parameter.Name, id})
+		gob.Params = append(gob.Params, FrameParameterGob{frame_parameter.Name, id, frame_parameter.Stiff})
 	}
 	return gob
 }
@@ -200,7 +201,7 @@ func (frame *Frame) Connect(d Deserializer, gob Gob) {
 	frame.blueprint = d.Get(frameGob.Blueprint).(*Blueprint)
 	for _, links_gob := range frameGob.Params {
 		target, _ := d.Get(links_gob.Target).(*Frame)
-		frame.params = append(frame.params, FrameParameter{links_gob.Name, target})
+		frame.params = append(frame.params, FrameParameter{links_gob.Name, target, links_gob.Stiff})
 	}
 }
 

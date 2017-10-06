@@ -29,10 +29,6 @@ func (b *Blueprint) MakeLinkTarget() *Frame {
 	return f
 }
 
-func (OverlayLayer) Drag(*Touch) Touching {
-	return nil
-}
-
 func (ParamLayer) Drag(t *Touch) Touching {
 	frame, param := t.FindParamBelow()
 	if frame == nil {
@@ -67,10 +63,6 @@ func (l *Link) End(touch *Touch) {
 		l.SetTarget(frame)
 		fake_target.Delete()
 	}
-}
-
-func (ObjectLayer) Drag(t *Touch) Touching {
-	return nil
 }
 
 // Frames
@@ -114,6 +106,7 @@ type FrameDragging struct {
 func (d *FrameDragging) Move(t *Touch) {
 	delta := t.Delta()
 	e, cell := d.frame, d.cell
+	start := e.pos
 	e.size.Sub(Mul(delta, cell))
 	e.pos.Sub(Mul(Scale(delta, 0.5), Mul(cell, cell)))
 	if cell.X == 0 && cell.Y == 0 {
@@ -125,10 +118,18 @@ func (d *FrameDragging) Move(t *Touch) {
 	if e.size.Y < 30 {
 		e.size.Y = 30
 	}
+	end := e.pos
+	movement := Sub(end, start)
+	e.PropagateStiff(func(f *Frame) {
+		if f != e {
+			f.pos.Add(movement)
+		}
+	})
 }
 
 func (*FrameDragging) End(*Touch) {}
 
-func (BackgroundLayer) Drag(t *Touch) Touching {
-	return nil
-}
+func (BackgroundLayer) Drag(*Touch) Touching { return nil }
+func (ParamNameLayer) Drag(*Touch) Touching  { return nil }
+func (OverlayLayer) Drag(*Touch) Touching    { return nil }
+func (ObjectLayer) Drag(*Touch) Touching     { return nil }

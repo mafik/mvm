@@ -93,6 +93,7 @@ type Link struct {
 type FrameParameter struct {
 	Name   string
 	Target *Frame
+	Stiff  bool
 }
 
 type Frame struct {
@@ -297,6 +298,21 @@ func (f *Frame) HitTest(p Vec2) bool {
 	return true
 }
 
+func (e *Frame) PropagateStiff(cb func(*Frame)) {
+	visited := map[*Frame]bool{}
+	for f, q := e, []*Frame{e}; len(q) > 0; f, q = q[len(q)-1], q[:len(q)-1] {
+		if _, ok := visited[f]; ok {
+			continue
+		}
+		visited[f] = true
+		cb(f)
+		for _, param := range f.params {
+			if param.Stiff && param.Target != nil {
+				q = append(q, param.Target)
+			}
+		}
+	}
+}
 func (link Link) StartPos() Vec2 {
 	i, _ := GetParam(link.source.Parameters(), link.param.Name)
 	return link.source.ParamCenter(i)
@@ -319,7 +335,21 @@ func (frame *Frame) DrawLinks(widgets *Widgets) {
 			continue
 		}
 		link := Link{frame, frame_parameter}
-		line := widgets.Line(link.StartPos(), link.EndPos())
+		start := link.StartPos()
+		end := link.EndPos()
+		if frame_parameter.Stiff && start != end {
+			delta := Sub(end, start)
+			wideStart := start
+			wideEnd := Add(end, ScaleTo(delta, 4))
+			outline := widgets.Line(wideStart, wideEnd)
+			outline.Color = "#fff"
+			w := 6.0
+			outline.Width = &w
+			outline.End = MakeArrow()
+			outline.End.Scale = (13. + 6.) / 13.
+			outline.End.Value.(*ArrowWidget).Color = "#fff"
+		}
+		line := widgets.Line(start, end)
 		line.Start = MakeCircle(param_r/4, "#000", "")
 		line.End = MakeArrow()
 	}
@@ -346,7 +376,7 @@ func (f *Frame) GetLinkSet(param_name string) *FrameParameter {
 func (f *Frame) ForceGetLinkSet(param_name string) *FrameParameter {
 	links := f.GetLinkSet(param_name)
 	if links == nil {
-		f.params = append(f.params, FrameParameter{param_name, nil})
+		f.params = append(f.params, FrameParameter{param_name, nil, false})
 		links = &f.params[len(f.params)-1]
 	}
 	return links

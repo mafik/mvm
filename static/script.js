@@ -79,7 +79,7 @@ function arrow(value) {
   ctx.moveTo(0, 0);
   ctx.arc(0, 0, A, Math.PI*5/6, Math.PI*7/6);
   ctx.closePath();
-  ctx.fillStyle = '#000';
+  ctx.fillStyle = value.Color;
   ctx.fill();
 }
 
@@ -135,7 +135,10 @@ function line(value) {
     start += 2;
   }
   if (value.End) {
-    end -= 2;
+    end -= 4 * (value.End.Scale || 1);
+  }
+  if (value.Color) {
+    ctx.strokeStyle = value.Color;
   }
 
   ctx.beginPath();

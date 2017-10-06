@@ -14,10 +14,6 @@ func (c *LayerList) Delete(touch Touch) Touching {
 	return nil
 }
 
-func (ObjectLayer) Delete(t Touch) Touching {
-	return nil
-}
-
 func (FrameLayer) Delete(t Touch) Touching {
 	deleted := t.FindFrameBelow()
 	if deleted == nil {
@@ -36,10 +32,6 @@ func (LinkLayer) Delete(t Touch) Touching {
 	return NoopTouching{}
 }
 
-func (OverlayLayer) Delete(t Touch) Touching {
-	return nil
-}
-
 func (ParamLayer) Delete(t Touch) Touching {
 	frame, name := Pointer.FindParamBelow()
 	if frame == nil {
@@ -53,6 +45,7 @@ func (ParamLayer) Delete(t Touch) Touching {
 	return NoopTouching{}
 }
 
-func (BackgroundLayer) Delete(t Touch) Touching {
-	return nil
-}
+func (ObjectLayer) Delete(t Touch) Touching     { return nil }
+func (OverlayLayer) Delete(t Touch) Touching    { return nil }
+func (ParamNameLayer) Delete(t Touch) Touching  { return nil }
+func (BackgroundLayer) Delete(t Touch) Touching { return nil }

@@ -160,10 +160,11 @@ type LineWidget struct {
 	Middle *Widget
 	End    *Widget
 	Dash   []int
+	Color  string
 }
 
 func (w *Widgets) Line(a, b Vec2) *LineWidget {
-	l := &LineWidget{Sub(b, a), nil, nil, nil, nil, nil}
+	l := &LineWidget{Sub(b, a), nil, nil, nil, nil, nil, ""}
 	w.AppendGlobal("line", a, l)
 	return l
 }
@@ -178,8 +179,12 @@ func MakeCircle(r float64, fill, stroke string) *Widget {
 	return &Widget{"circle", Vec2{0, 0}, 1, &CircleWidget{fill, stroke, r}}
 }
 
+type ArrowWidget struct {
+	Color string
+}
+
 func MakeArrow() *Widget {
-	return &Widget{"arrow", Vec2{0, 0}, 1, nil}
+	return &Widget{"arrow", Vec2{0, 0}, 1, &ArrowWidget{"#000"}}
 }
 
 func (w *Widgets) Circle(pos Vec2, r float64, fill, stroke string) {
@@ -227,7 +232,21 @@ func (FrameLayer) Draw() (widgets Widgets) {
 	return
 }
 
-func (p ParamLayer) Draw() (widgets Widgets) {
+func (ParamNameLayer) Draw() (widgets Widgets) {
+	for _, frame := range TheVM.active.typ.(*Blueprint).Frames() {
+		params := frame.Parameters()
+		for i, param := range params {
+			pos := frame.ParamCenter(i)
+			pos.Y -= 2
+			pos.X += param_r + margin
+			widgets.Text(param.Name(), pos)
+		}
+	}
+	return
+
+}
+
+func (ParamLayer) Draw() (widgets Widgets) {
 	for _, frame := range TheVM.active.typ.(*Blueprint).Frames() {
 		local_params := frame.LocalParameters()
 		type_params := frame.Type().Parameters()
@@ -250,9 +269,6 @@ func (p ParamLayer) Draw() (widgets Widgets) {
 				stroke = "#000"
 			}
 			widgets.Circle(pos, param_r, fill, stroke)
-			pos.Y -= 1
-			pos.X += param_r + margin
-			widgets.Text(param.Name(), pos)
 		}
 	}
 	return
@@ -265,10 +281,19 @@ func (l LinkLayer) Draw() (widgets Widgets) {
 	return
 }
 
+var shadowOffset = Vec2{margin, margin}
+
 func (BackgroundLayer) Draw() (widgets Widgets) {
 	for _, t := range Pointer.Touched {
 		if fd, ok := t.(*FrameDragging); ok {
-			widgets.Rect(Add(fd.frame.pos, Vec2{margin, margin}), fd.frame.size, "#ccc")
+			f := fd.frame
+			f.PropagateStiff(func(f *Frame) {
+				widgets.Rect(Add(f.pos, shadowOffset), f.size, "#ccc")
+				for i, _ := range f.Parameters() {
+					pos := Add(f.ParamCenter(i), shadowOffset)
+					widgets.Circle(pos, param_r, "#ccc", "")
+				}
+			})
 		}
 	}
 	return
