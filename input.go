@@ -120,7 +120,7 @@ func (OverlayLayer) Input(t *Touch, e Event) Touching {
 	case "Tab":
 		nav = true // TODO: implement Touching interface instead
 		return NoopTouching{}
-	case "CapsLock":
+	case "KeyS":
 		o := Pointer.FindObjectBelow()
 		if o == nil {
 			return nil
@@ -247,5 +247,12 @@ func (LinkLayer) Input(t *Touch, e Event) Touching {
 	return nil
 }
 
-func (BackgroundLayer) Input(t *Touch, e Event) Touching { return nil }
-func (ParamNameLayer) Input(*Touch, Event) Touching      { return nil }
+func (BackgroundLayer) Input(t *Touch, e Event) Touching {
+	if e.Code == "KeyS" {
+		bp := TheVM.active.typ.(*Blueprint)
+		f := bp.AddFrame()
+		return &FrameDragging{f, Vec2{1, 1}}
+	}
+	return nil
+}
+func (ParamNameLayer) Input(*Touch, Event) Touching { return nil }

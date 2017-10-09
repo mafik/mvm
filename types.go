@@ -213,6 +213,14 @@ func (f *Frame) LocalParameters() (params []Parameter) {
 	return params
 }
 
+func (f *Frame) TypeParameters() []Parameter {
+	t := f.Type()
+	if t == nil {
+		return nil
+	}
+	return t.Parameters()
+}
+
 func (f *Frame) Parameters() (params []Parameter) {
 	params = f.LocalParameters()
 	if typ := f.Type(); typ != nil {

@@ -52,11 +52,13 @@ func (w *Widgets) Text(text string, pos Vec2) *TextWidget {
 
 type RectWidget struct {
 	Vec2
-	Color string
+	Fill   string
+	Width  float64
+	Stroke string
 }
 
 func (w *Widgets) Rect(pos, size Vec2, color string) *RectWidget {
-	r := &RectWidget{size, color}
+	r := &RectWidget{size, color, 0, ""}
 	w.AppendGlobal("rect", pos, r)
 	return r
 }
@@ -70,7 +72,7 @@ var button_height float64 = 40.0
 var button_width float64 = 100.0
 
 func (w *Widgets) Button(text string, pos, size Vec2, fg, bg string) *ButtonWidget {
-	r := &ButtonWidget{&TextWidget{text, "", fg, false}, &RectWidget{size, bg}}
+	r := &ButtonWidget{&TextWidget{text, "", fg, false}, &RectWidget{size, bg, 0, ""}}
 	w.AppendGlobal("button", pos, r)
 	return r
 }
@@ -143,7 +145,7 @@ func (c *ButtonListContext) Add2(text string, active bool) ButtonList {
 	}
 	c.widgets.AppendLocal("button", c.next, ButtonWidget{
 		&TextWidget{text, "center", fg, false},
-		&RectWidget{Vec2{button_width, button_height}, bg}})
+		&RectWidget{Vec2{button_width, button_height}, bg, 0, ""}})
 	c.next.Y += (button_height + margin) * float64(c.dir)
 	return c
 }
@@ -210,22 +212,27 @@ func (ObjectLayer) Draw() (widgets Widgets) {
 func (FrameLayer) Draw() (widgets Widgets) {
 	blueprint := TheVM.active.typ.(*Blueprint)
 	for _, frame := range blueprint.Frames() {
+		w := widgets.Button("", frame.pos, frame.size, "#000", "#fff")
+		w.Rect.X -= 2
+		w.Rect.Y -= 2
+		w.Rect.Stroke = "#000"
+		w.Rect.Width = 2
 		title := frame.Title()
 		obj := frame.Object(TheVM.active)
-		typ := obj.typ
-		s := ""
 		if obj != nil {
-			s = typ.String(obj.priv)
+			typ := obj.typ
+			w.Text.Text = typ.String(obj.priv)
+			if typ == TextType {
+				w.Text.Caret = true
+			}
 			if obj.execute {
 				widgets.Rect(frame.pos, Add(frame.size, Vec2{10, 10}), "#f00")
 			}
 			if obj.running {
 				widgets.Hourglass(Add(frame.pos, Vec2{frame.size.X / 2, -frame.size.Y / 2}), "#f00")
 			}
-		}
-		w := widgets.Button(s, frame.pos, frame.size, "#000", "#fff")
-		if typ == TextType {
-			w.Text.Caret = true
+		} else {
+			w.Rect.Fill = ""
 		}
 		widgets.Text(title, Sub(frame.pos, Scale(frame.size, .5)))
 	}
@@ -237,7 +244,7 @@ func (ParamNameLayer) Draw() (widgets Widgets) {
 		params := frame.Parameters()
 		for i, param := range params {
 			pos := frame.ParamCenter(i)
-			pos.Y -= 2
+			pos.Y -= 3
 			pos.X += param_r + margin
 			widgets.Text(param.Name(), pos)
 		}
@@ -249,7 +256,7 @@ func (ParamNameLayer) Draw() (widgets Widgets) {
 func (ParamLayer) Draw() (widgets Widgets) {
 	for _, frame := range TheVM.active.typ.(*Blueprint).Frames() {
 		local_params := frame.LocalParameters()
-		type_params := frame.Type().Parameters()
+		type_params := frame.TypeParameters()
 		params := frame.Parameters()
 		n := len(params)
 		if n > 0 {

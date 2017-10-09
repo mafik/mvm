@@ -66,11 +66,20 @@ function text(value) {
 }
 
 function rect(value) {
-  ctx.fillStyle = value.Color || '#fff';
   ctx.beginPath();
   ctx.rect(-value.X/2, -value.Y/2, value.X, value.Y);
   ctx.closePath();
-  ctx.fill();
+  if (value.Fill) {
+    ctx.fillStyle = value.Fill;
+    ctx.fill();
+  }
+  if (value.Stroke) {
+    if (value.Width) {
+      ctx.lineWidth = value.Width;
+    }
+    ctx.strokeStyle = value.Stroke;
+    ctx.stroke();
+  }
 }
 
 function arrow(value) {
