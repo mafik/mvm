@@ -1,199 +1,50 @@
-var elems = [];
-
 document.body.style.margin = '0';
 document.body.style.overflow = 'hidden';
 
 var canvas = document.getElementById('canvas');
-var ctx = canvas.getContext("2d");
+var ctx = canvas.getContext("2d", {"alpha": false});
 
-function drawWidget(w) {
-  ctx.save();
-  ctx.translate(w.Pos.X, w.Pos.Y);
-  ctx.scale(w.Scale, w.Scale);
-  window[w.Type](w.Value);
-  ctx.restore();
+function runCommand(c) {
+  var fn = c.shift();
+  window[fn].apply(undefined, c);
 }
 
-function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = '#ddd';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = '#000';
-  elems.forEach(drawWidget);
+function measureText(text) {
+  var w = ctx.measureText(text).width;
   socket.send(JSON.stringify({
-    "type": "RenderDone",
-    "time": performance.now()
+    "type": "TextWidth",
+    "width": w,
   }));
-  requestAnimationFrame(function() {
-    if (socket.readyState != 1) return;
-    socket.send(JSON.stringify({
-      "type": "RenderReady",
-      "time": performance.now()
-    }));
-  });
 }
 
-var margin = 10;
+function translate(x, y) { ctx.translate(x, y); }
+function fillText(text, x, y) { ctx.fillText(text, x, y); }
+function fillRect(x, y, w, h) { ctx.fillRect(x, y, w, h); }
+function rect(x, y, w, h) { ctx.rect(x, y, w, h); }
+function arc(x, y, r, alpha, beta, anticlockwise) { ctx.arc(x, y, r, alpha, beta, anticlockwise); }
+function ellipse(x, y, rx, ry, rotation, alpha, beta, anticlockwise) { ctx.ellipse(x, y, rx, ry, rotation, alpha, beta, anticlockwise); }
+function moveTo(x, y) { ctx.moveTo(x, y); }
+function lineTo(x, y) { ctx.lineTo(x, y); }
+function setLineDash(val) { ctx.setLineDash(val); }
+function rotate(val) { ctx.rotate(val); }
+function scale(val) { ctx.scale(val, val); }
 
-function button(value) {
-  if (value.Rect) {
-    rect(value.Rect);
-    ctx.clip();
-  }
-  if (value.Text) {
-    if (value.Rect) {
-      if (value.Text.Align != "center") {
-	ctx.translate(-value.Rect.X/2 + margin, 0);
-      }
-      ctx.translate(0, margin + 20 - value.Rect.Y/2);
-    }
-    text(value.Text);
-  }
-}
+function fillStyle(val) { ctx.fillStyle = val; }
+function textAlign(val) { ctx.textAlign = val; }
+function textBaseline(val) { ctx.textBaseline = val; }
+function lineWidth(val) { ctx.lineWidth = val; }
+function strokeStyle(val) { ctx.strokeStyle = val; }
+function font(val) { ctx.font = val; }
 
-function text(value) {
-  ctx.textAlign = value.Align || 'left';
-  ctx.fillStyle = value.Color || '#000';
-  var cars = value.Text.split("\n");
-  for (var i = 0; i < cars.length; ++i) {
-    ctx.fillText(cars[i], 0, 20*i);
-  }
-  if (value.Caret) {
-    var endX = ctx.measureText(cars[cars.length - 1]).width;
-    var endY = 20 * (cars.length - 1);
-    ctx.fillRect(endX, endY + 5, 2, - 25);
-  }
-}
+function save() { ctx.save(); }
+function restore() { ctx.restore(); }
+function beginPath() { ctx.beginPath(); }
+function closePath() { ctx.closePath(); }
+function fill() { ctx.fill(); }
+function stroke() { ctx.stroke(); }
+function clip() { ctx.clip(); }
 
-function rect(value) {
-  ctx.beginPath();
-  ctx.rect(-value.X/2, -value.Y/2, value.X, value.Y);
-  ctx.closePath();
-  if (value.Fill) {
-    ctx.fillStyle = value.Fill;
-    ctx.fill();
-  }
-  if (value.Stroke) {
-    if (value.Width) {
-      ctx.lineWidth = value.Width;
-    }
-    ctx.strokeStyle = value.Stroke;
-    ctx.stroke();
-  }
-}
-
-function arrow(value) {
-  var A = 13;
-  ctx.beginPath();
-  ctx.moveTo(0, 0);
-  ctx.arc(0, 0, A, Math.PI*5/6, Math.PI*7/6);
-  ctx.closePath();
-  ctx.fillStyle = value.Color;
-  ctx.fill();
-}
-
-
-function hourglass(value) {
-  var LW = 1.5; // line width
-  var W = 8; // width
-  var H = 10; // top height
-  var H2 = H - 2; // angled height
-  var h = 1.5; // gap height
-  var F = 4 + Math.cos((+new Date) / 2000); // fill
-  ctx.translate(-W-LW/2, -H-LW/2);
-  ctx.beginPath();
-  ctx.moveTo(-W, -H);
-  ctx.lineTo(W, -H);
-  ctx.lineTo(W, -H2);
-  ctx.lineTo(2, -h);
-  ctx.lineTo(2, h);
-  ctx.lineTo(W, H2);
-  ctx.lineTo(W, H);
-  ctx.lineTo(-W, H);
-  ctx.lineTo(-W, H2);
-  ctx.lineTo(-2, h);
-  ctx.lineTo(-2, -h);
-  ctx.lineTo(-W, -H2);
-  ctx.closePath();
-  ctx.lineWidth = 1.5;
-  //ctx.lineJoin = 'round';
-  ctx.strokeStyle = value.Color;
-  ctx.stroke();
-
-  ctx.translate(0, -LW/2 * Math.sqrt(2) -h);
-  ctx.beginPath();
-  ctx.moveTo(0, 0);
-  ctx.lineTo(-F, -F);
-  ctx.lineTo(F, -F);
-  ctx.closePath();
-  ctx.fillStyle = value.Color;
-  ctx.fill();
-}
-
-function line(value) {
-  ctx.lineWidth = value.Width || 2;
-  if (value.Dash) {
-    ctx.setLineDash(value.Dash);
-  }
-
-  ctx.rotate(Math.atan2(value.Y, value.X));
-  var length = Math.hypot(value.Y, value.X);
-  var end = length;
-  var start = 0;
-  if (value.Start) {
-    start += 2;
-  }
-  if (value.End) {
-    end -= 4 * (value.End.Scale || 1);
-  }
-  if (value.Color) {
-    ctx.strokeStyle = value.Color;
-  }
-
-  ctx.beginPath();
-  ctx.moveTo(start, 0);
-  ctx.lineTo(end, 0);
-  ctx.stroke();
-
-  if (value.Middle) {
-    ctx.save();
-    ctx.translate(length / 2, 0);
-    if (value.X <= 0) {
-      ctx.rotate(Math.PI);
-    }
-    ctx.translate(0,-1);
-    drawWidget(value.Middle);
-    ctx.restore();
-  }
-
-  if (value.Start) {
-    ctx.rotate(Math.PI);
-    drawWidget(value.Start);
-    ctx.rotate(Math.PI);
-  }
-
-  if (value.End) {
-    ctx.translate(Math.hypot(value.X, value.Y), 0);
-    drawWidget(value.End);
-  }
-}
-
-function circle(value) {
-  ctx.beginPath();
-  ctx.arc(0, 0, value.R, 0, 2*Math.PI, false);
-  ctx.closePath();
-  if (value.Fill) {
-    ctx.fillStyle = value.Fill;
-    ctx.fill();
-  }
-  if (value.Stroke) {
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = value.Stroke;
-    ctx.stroke();
-  }
-}
-
-var socket = new WebSocket("ws://localhost:8000/events");
+var socket = undefined;
 var binds = [
   {"html": "onmousedown", "mvm": "MouseDown", "x": "clientX", "y": "clientY", "button": "button"},
   {"html": "onmousemove", "mvm": "MouseMove", "x": "clientX", "y": "clientY"},
@@ -201,12 +52,27 @@ var binds = [
   {"html": "onwheel",     "mvm": "Wheel",     "x": "deltaX",  "y": "deltaY"},
   {"html": "onkeydown",   "mvm": "KeyDown",   "code": "code", "key": "key"},
   {"html": "onkeyup",     "mvm": "KeyUp",     "code": "code", "key": "key"},
-  {"html": "oncontextmenu", "mvm": "ContextMenu"},
+  {"html": "oncontextmenu"},
 ];
 
 function SocketMessage(e) {
-  elems = JSON.parse(e.data);
-  draw();
+  var msg = JSON.parse(e.data);
+  if (typeof msg[0] === 'string') {
+    runCommand(msg);
+  } else {
+    msg.forEach(runCommand);
+    socket.send(JSON.stringify({
+      "type": "RenderDone",
+      "time": performance.now()
+    }));
+    requestAnimationFrame(function() {
+      if (socket.readyState != 1) return;
+      socket.send(JSON.stringify({
+	"type": "RenderReady",
+	"time": performance.now()
+      }));
+    });
+  }
 };
 
 function Reconnect() {
@@ -246,12 +112,14 @@ function WindowResize(e) {
 
 function Bind(bind) {
   window[bind.html] = function(e) {
-    var o = { "type": bind.mvm };
-    for (var key in bind) {
-      if (key == "html" || key == "mvm") continue;
-      o[key] = e[bind[key]];
+    if (typeof bind.mvm !== 'undefined') {
+      var o = { "type": bind.mvm };
+      for (var key in bind) {
+	if (key == "html" || key == "mvm") continue;
+	o[key] = e[bind[key]];
+      }
+      socket.send(JSON.stringify(o));
     }
-    socket.send(JSON.stringify(o));
     e.preventDefault();
     return true;
   }

@@ -71,7 +71,7 @@ func (frame *Frame) MarkForExecution() {
 
 var keep_running bool = true
 
-func ProcessEvent(e Event, updates chan string) {
+func ProcessEvent(e Event, events chan Event, updates chan string) {
 	switch e.Type {
 	case "RenderDone":
 		return
@@ -229,7 +229,7 @@ var tasks chan *Object = make(chan *Object, 100)
 
 type Event struct {
 	Type          string
-	Width, Height uint
+	Width, Height float64
 	X, Y          float64
 	Code          string
 	Key           string

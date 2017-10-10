@@ -1,259 +1,274 @@
 package mvm
 
 import (
-	"encoding/json"
+	"bytes"
+	"fmt"
+	"math"
+	"strings"
 )
 
-var margin float64 = 5.0
+var margin float64 = 5
+var buttonWidth float64 = 100
+var buttonHeight float64 = 40
 
-type Drawable interface {
-	Draw() Widgets
+type Context2D struct {
+	events  chan Event
+	updates chan string
+	buffer  bytes.Buffer
 }
 
-type Widget struct {
-	Type  string
-	Pos   Vec2
-	Scale float64
-	Value interface{}
-}
-
-type Widgets struct {
-	slice []*Widget
-}
-
-func (w Widgets) MarshalJSON() ([]byte, error) {
-	return json.Marshal(w.slice)
-}
-
-func (w *Widgets) AppendLocal(typ string, pos Vec2, value interface{}) {
-	w.slice = append(w.slice, &Widget{typ, pos, 1, value})
-}
-
-func (w *Widgets) AppendGlobal(typ string, pos Vec2, value interface{}) {
-	w.slice = append(w.slice, &Widget{typ, window.ToLocal(pos), window.scale, value})
-}
-
-type TextWidget struct {
-	Text  string
-	Align string
-	Color string
-	Caret bool
-}
-
-func MakeText(text string) *Widget {
-	return &Widget{"text", Vec2{0, 0}, 1, &TextWidget{text, "center", "", false}}
-}
-
-func (w *Widgets) Text(text string, pos Vec2) *TextWidget {
-	r := &TextWidget{text, "", "", false}
-	w.AppendGlobal("text", pos, r)
-	return r
-}
-
-type RectWidget struct {
-	Vec2
-	Fill   string
-	Width  float64
-	Stroke string
-}
-
-func (w *Widgets) Rect(pos, size Vec2, color string) *RectWidget {
-	r := &RectWidget{size, color, 0, ""}
-	w.AppendGlobal("rect", pos, r)
-	return r
-}
-
-type ButtonWidget struct {
-	Text *TextWidget
-	Rect *RectWidget
-}
-
-var button_height float64 = 40.0
-var button_width float64 = 100.0
-
-func (w *Widgets) Button(text string, pos, size Vec2, fg, bg string) *ButtonWidget {
-	r := &ButtonWidget{&TextWidget{text, "", fg, false}, &RectWidget{size, bg, 0, ""}}
-	w.AppendGlobal("button", pos, r)
-	return r
-}
-
-type ButtonList interface {
-	AlignLeft(float64) ButtonList
-	AlignBottom(float64) ButtonList
-	AlignTop(float64) ButtonList
-	PositionAt(Vec2) ButtonList
-	Add(text string) ButtonList
-	Add2(text string, active bool) ButtonList
-	Dir(dir int) ButtonList
-	Colors(bg, fg string) ButtonList
-	Colors2(active_bg, active_fg, inactive_bg, inactive_fg string) ButtonList
-}
-
-type ButtonListContext struct {
-	widgets                                        *Widgets
-	next                                           Vec2
-	active_bg, active_fg, inactive_bg, inactive_fg string
-	dir                                            int
-}
-
-func (w *Widgets) ButtonList() ButtonList {
-	return &ButtonListContext{w, Vec2{0, 0}, "#888", "#fff", "#ccc", "#000", 1}
-}
-
-func (c *ButtonListContext) Colors(bg, fg string) ButtonList {
-	c.active_bg = bg
-	c.active_fg = fg
-	return c
-}
-
-func (c *ButtonListContext) Colors2(active_bg, active_fg, inactive_bg, inactive_fg string) ButtonList {
-	c.active_bg = active_bg
-	c.active_fg = active_fg
-	c.inactive_bg = inactive_bg
-	c.inactive_fg = inactive_fg
-	return c
-}
-
-func (c *ButtonListContext) AlignLeft(left float64) ButtonList {
-	c.next.X = left + margin + button_width/2
-	return c
-}
-
-func (c *ButtonListContext) AlignTop(top float64) ButtonList {
-	c.next.Y = top + margin + button_height/2
-	return c
-}
-
-func (c *ButtonListContext) AlignBottom(bottom float64) ButtonList {
-	c.next.Y = bottom - margin - button_height/2
-	return c
-}
-
-func (c *ButtonListContext) PositionAt(pos Vec2) ButtonList {
-	c.next = pos
-	return c
-}
-
-func (c *ButtonListContext) Add(text string) ButtonList {
-	return c.Add2(text, true)
-}
-
-func (c *ButtonListContext) Add2(text string, active bool) ButtonList {
-	fg, bg := c.inactive_fg, c.inactive_bg
-	if active {
-		fg, bg = c.active_fg, c.active_bg
+func (ctx *Context2D) sep() {
+	if ctx.buffer.Len() == 0 {
+		ctx.buffer.WriteRune('[')
+	} else {
+		ctx.buffer.WriteRune(',')
 	}
-	c.widgets.AppendLocal("button", c.next, ButtonWidget{
-		&TextWidget{text, "center", fg, false},
-		&RectWidget{Vec2{button_width, button_height}, bg, 0, ""}})
-	c.next.Y += (button_height + margin) * float64(c.dir)
-	return c
 }
 
-func (c *ButtonListContext) Dir(dir int) ButtonList {
-	c.dir = dir
-	return c
+func (ctx *Context2D) add(s string) {
+	ctx.sep()
+	ctx.buffer.WriteString(s)
 }
 
-type LineWidget struct {
-	Vec2
-	Width  *float64
-	Start  *Widget
-	Middle *Widget
-	End    *Widget
-	Dash   []int
-	Color  string
+func (ctx *Context2D) MarshalJSON() []byte {
+	ctx.buffer.WriteRune(']')
+	return ctx.buffer.Bytes()
 }
 
-func (w *Widgets) Line(a, b Vec2) *LineWidget {
-	l := &LineWidget{Sub(b, a), nil, nil, nil, nil, nil, ""}
-	w.AppendGlobal("line", a, l)
+func (ctx *Context2D) MeasureText(text string) float64 {
+	ctx.updates <- fmt.Sprintf("[\"measureText\",%q]", text)
+	result := <-ctx.events
+	if result.Type != "MeasureText" {
+		panic("Bad result of MeasureText")
+	}
+	return result.Width
+}
+
+func (ctx *Context2D) Translate(x, y float64) {
+	ctx.add(fmt.Sprintf("[\"translate\",%g,%g]", x, y))
+}
+func (ctx *Context2D) FillText(text string, x, y float64) {
+	ctx.add(fmt.Sprintf("[\"fillText\",%q,%g,%g]", text, x, y))
+}
+func (ctx *Context2D) FillRect(x, y, w, h float64) {
+	ctx.add(fmt.Sprintf("[\"fillRect\",%g,%g,%g,%g]", x, y, w, h))
+}
+func (ctx *Context2D) Rect(x, y, w, h float64) {
+	ctx.add(fmt.Sprintf("[\"rect\",%g,%g,%g,%g]", x, y, w, h))
+}
+func (ctx *Context2D) Arc(x, y, r, alpha, beta float64, anticlockwise bool) {
+	ctx.add(fmt.Sprintf("[\"arc\",%g,%g,%g,%g,%g,%t]", x, y, r, alpha, beta, anticlockwise))
+}
+func (ctx *Context2D) Ellipse(x, y, rx, ry, rotation, alpha, beta float64, anticlockwise bool) {
+	ctx.add(fmt.Sprintf("[\"ellipse\",%g,%g,%g,%g,%g,%g,%g,%t]", x, y, rx, ry, rotation, alpha, beta, anticlockwise))
+}
+func (ctx *Context2D) MoveTo(x, y float64) {
+	ctx.add(fmt.Sprintf("[\"moveTo\",%g,%g]", x, y))
+}
+func (ctx *Context2D) LineTo(x, y float64) {
+	ctx.add(fmt.Sprintf("[\"lineTo\",%g,%g]", x, y))
+}
+func (ctx *Context2D) SetLineDash(pattern []float64) {
+	formatted := make([]string, len(pattern))
+	for i, val := range pattern {
+		formatted[i] = fmt.Sprintf("%g", val)
+	}
+	dash := strings.Join(formatted, ",")
+	ctx.add(fmt.Sprintf("[\"setLineDash\",[%s]]", dash))
+}
+func (ctx *Context2D) Rotate(alpha float64) {
+	ctx.add(fmt.Sprintf("[\"rotate\",%g]", alpha))
+}
+func (ctx *Context2D) Scale(s float64) {
+	ctx.add(fmt.Sprintf("[\"scale\",%g,%g]", s, s))
+}
+
+func (ctx *Context2D) FillStyle(fill string) {
+	ctx.add(fmt.Sprintf("[\"fillStyle\",%q]", fill))
+}
+func (ctx *Context2D) TextAlign(align string) {
+	ctx.add(fmt.Sprintf("[\"textAlign\",%q]", align))
+}
+func (ctx *Context2D) TextBaseline(baseline string) {
+	ctx.add(fmt.Sprintf("[\"textBaseline\",%q]", baseline))
+}
+func (ctx *Context2D) LineWidth(w float64) {
+	ctx.add(fmt.Sprintf("[\"lineWidth\",%g]", w))
+}
+func (ctx *Context2D) StrokeStyle(style string) {
+	ctx.add(fmt.Sprintf("[\"strokeStyle\",%q]", style))
+}
+func (ctx *Context2D) Font(font string) {
+	ctx.add(fmt.Sprintf("[\"font\",%q]", font))
+}
+
+func (ctx *Context2D) Save()      { ctx.add("[\"save\"]") }
+func (ctx *Context2D) Restore()   { ctx.add("[\"restore\"]") }
+func (ctx *Context2D) BeginPath() { ctx.add("[\"beginPath\"]") }
+func (ctx *Context2D) ClosePath() { ctx.add("[\"closePath\"]") }
+func (ctx *Context2D) Fill()      { ctx.add("[\"fill\"]") }
+func (ctx *Context2D) Stroke()    { ctx.add("[\"stroke\"]") }
+func (ctx *Context2D) Clip()      { ctx.add("[\"clip\"]") }
+
+// Utility functions
+
+func (ctx *Context2D) Translate2(pos Vec2) {
+	ctx.Translate(pos.X, pos.Y)
+}
+
+func (ctx *Context2D) Rect2(pos, size Vec2) {
+	ctx.Rect(pos.X-size.X/2, pos.Y-size.Y/2, size.X, size.Y)
+}
+
+func (ctx *Context2D) Hourglass(color string) {
+	const LW = 1.5   // line width
+	const W = 8      // width
+	const H = 10     // top height
+	const H2 = H - 2 // angled height
+	const h = 1.5    // gap height
+	const F = 5      // fill
+	ctx.Translate(-W-LW/2, -H-LW/2)
+	ctx.BeginPath()
+	ctx.MoveTo(-W, -H)
+	ctx.LineTo(W, -H)
+	ctx.LineTo(W, -H2)
+	ctx.LineTo(2, -h)
+	ctx.LineTo(2, h)
+	ctx.LineTo(W, H2)
+	ctx.LineTo(W, H)
+	ctx.LineTo(-W, H)
+	ctx.LineTo(-W, H2)
+	ctx.LineTo(-2, h)
+	ctx.LineTo(-2, -h)
+	ctx.LineTo(-W, -H2)
+	ctx.ClosePath()
+	ctx.LineWidth(LW)
+	ctx.StrokeStyle(color)
+	ctx.Stroke()
+
+	ctx.Translate(0, -LW/2*math.Sqrt(2)-h)
+	ctx.BeginPath()
+	ctx.MoveTo(0, 0)
+	ctx.LineTo(-F, -F)
+	ctx.LineTo(F, -F)
+	ctx.ClosePath()
+	ctx.FillStyle(color)
+	ctx.Fill()
+
+}
+
+type ButtonList struct {
+	Ctx                                        *Context2D
+	Next                                       Vec2
+	ActiveBg, ActiveFg, InactiveBg, InactiveFg string
+	Dir                                        int
+}
+
+func (ctx *Context2D) NewButtonList() *ButtonList {
+	return &ButtonList{ctx, Vec2{0, 0}, "#888", "#fff", "#ccc", "#000", 1}
+}
+
+func (l *ButtonList) AlignLeft(left float64) *ButtonList {
+	l.Next.X = left + margin + buttonWidth/2
 	return l
 }
 
-type CircleWidget struct {
-	Fill   string
-	Stroke string
-	R      float64
+func (l *ButtonList) AlignTop(top float64) *ButtonList {
+	l.Next.Y = top + margin + buttonHeight/2
+	return l
 }
 
-func MakeCircle(r float64, fill, stroke string) *Widget {
-	return &Widget{"circle", Vec2{0, 0}, 1, &CircleWidget{fill, stroke, r}}
+func (l *ButtonList) AlignBottom(bottom float64) *ButtonList {
+	l.Next.Y = bottom - margin - buttonHeight/2
+	return l
 }
 
-type ArrowWidget struct {
-	Color string
+func (l *ButtonList) Add(text string, active bool) *ButtonList {
+	fg, bg := l.InactiveFg, l.InactiveBg
+	if active {
+		fg, bg = l.ActiveFg, l.ActiveBg
+	}
+	l.Ctx.BeginPath()
+	l.Ctx.Rect(l.Next.X-buttonWidth/2, l.Next.Y-buttonHeight/2, buttonWidth, buttonHeight)
+	l.Ctx.FillStyle(bg)
+	l.Ctx.Fill()
+	l.Ctx.FillStyle(fg)
+	l.Ctx.TextAlign("center")
+	l.Ctx.FillText(text, l.Next.X, l.Next.Y)
+	l.Next.Y += (buttonHeight + margin) * float64(l.Dir)
+	return l
 }
 
-func MakeArrow() *Widget {
-	return &Widget{"arrow", Vec2{0, 0}, 1, &ArrowWidget{"#000"}}
+type Drawable interface {
+	Draw(ctx *Context2D)
 }
 
-func (w *Widgets) Circle(pos Vec2, r float64, fill, stroke string) {
-	w.AppendGlobal("circle", pos, &CircleWidget{fill, stroke, r})
-}
-
-type HourglassWidget struct {
-	Color string
-}
-
-func (w *Widgets) Hourglass(pos Vec2, color string) {
-	w.AppendGlobal("hourglass", pos, &HourglassWidget{color})
-}
-
-func (OverlayLayer) Draw() (widgets Widgets) {
+func (OverlayLayer) Draw(ctx *Context2D) {
 	return
 }
 
-func (ObjectLayer) Draw() (widgets Widgets) {
+func (ObjectLayer) Draw(ctx *Context2D) {
 	return
 }
 
-func (FrameLayer) Draw() (widgets Widgets) {
+func (FrameLayer) Draw(ctx *Context2D) {
 	blueprint := TheVM.active.typ.(*Blueprint)
 	for _, frame := range blueprint.Frames() {
-		w := widgets.Button("", frame.pos, frame.size, "#000", "#fff")
-		w.Rect.X -= 2
-		w.Rect.Y -= 2
-		w.Rect.Stroke = "#000"
-		w.Rect.Width = 2
 		title := frame.Title()
 		obj := frame.Object(TheVM.active)
+		left := frame.pos.X - frame.size.X/2
+		top := frame.pos.Y - frame.size.Y/2
 		if obj != nil {
+			// White background
+			ctx.BeginPath()
+			ctx.Rect2(frame.pos, frame.size)
+			ctx.FillStyle("#fff")
+			ctx.Fill()
 			typ := obj.typ
-			w.Text.Text = typ.String(obj.priv)
+			text := typ.String(obj.priv)
+			ctx.FillStyle("#000")
+			ctx.TextAlign("left")
+			ctx.FillText(text, left+margin, top+margin+25)
 			if typ == TextType {
-				w.Text.Caret = true
+				width := ctx.MeasureText(text)
+				ctx.FillRect(left+margin+width, top+margin-5, 2, 25)
 			}
 			if obj.execute {
-				widgets.Rect(frame.pos, Add(frame.size, Vec2{10, 10}), "#f00")
+				ctx.FillStyle("#f00")
+				ctx.BeginPath()
+				ctx.Rect2(frame.pos, Add(frame.size, Vec2{10, 10}))
+				ctx.Fill()
 			}
 			if obj.running {
-				widgets.Hourglass(Add(frame.pos, Vec2{frame.size.X / 2, -frame.size.Y / 2}), "#f00")
+				ctx.Save()
+				ctx.Translate2(Add(frame.pos, Vec2{frame.size.X / 2, -frame.size.Y / 2}))
+				ctx.Hourglass("#f00")
+				ctx.Restore()
 			}
-		} else {
-			w.Rect.Fill = ""
 		}
-		widgets.Text(title, Sub(frame.pos, Scale(frame.size, .5)))
+		// Black outline
+		ctx.BeginPath()
+		ctx.Rect2(frame.pos, Sub(frame.size, Vec2{2, 2}))
+		ctx.StrokeStyle("#000")
+		ctx.Stroke()
+		ctx.FillText(title, left, top)
 	}
-	return
 }
 
-func (ParamNameLayer) Draw() (widgets Widgets) {
+func (ParamNameLayer) Draw(ctx *Context2D) {
+	ctx.FillStyle("#000")
 	for _, frame := range TheVM.active.typ.(*Blueprint).Frames() {
 		params := frame.Parameters()
 		for i, param := range params {
 			pos := frame.ParamCenter(i)
 			pos.Y -= 3
 			pos.X += param_r + margin
-			widgets.Text(param.Name(), pos)
+			ctx.FillText(param.Name(), pos.X, pos.Y)
 		}
 	}
-	return
-
 }
 
-func (ParamLayer) Draw() (widgets Widgets) {
+func (ParamLayer) Draw(ctx *Context2D) {
 	for _, frame := range TheVM.active.typ.(*Blueprint).Frames() {
 		local_params := frame.LocalParameters()
 		type_params := frame.TypeParameters()
@@ -278,19 +293,17 @@ func (ParamLayer) Draw() (widgets Widgets) {
 			widgets.Circle(pos, param_r, fill, stroke)
 		}
 	}
-	return
 }
 
-func (l LinkLayer) Draw() (widgets Widgets) {
+func (l LinkLayer) Draw(ctx *Context2D) {
 	for _, frame := range TheVM.active.typ.(*Blueprint).frames {
 		frame.DrawLinks(&widgets)
 	}
-	return
 }
 
 var shadowOffset = Vec2{margin, margin}
 
-func (BackgroundLayer) Draw() (widgets Widgets) {
+func (BackgroundLayer) Draw(ctx *Context2D) {
 	for _, t := range Pointer.Touched {
 		if fd, ok := t.(*FrameDragging); ok {
 			f := fd.frame
@@ -303,5 +316,4 @@ func (BackgroundLayer) Draw() (widgets Widgets) {
 			})
 		}
 	}
-	return
 }
