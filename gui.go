@@ -241,7 +241,15 @@ func (ObjectLayer) Draw(ctx *Context2D) {
 	return
 }
 
+func (ctx *Context2D) TransformToGlobal(w *Window) {
+	ctx.Translate2(Scale(w.size, 0.5))
+	ctx.Scale(w.scale)
+	ctx.Translate2(Neg(w.center))
+}
+
 func (FrameLayer) Draw(ctx *Context2D) {
+	ctx.Save()
+	ctx.TransformToGlobal(&window)
 	blueprint := TheVM.active.typ.(*Blueprint)
 	for _, frame := range blueprint.Frames() {
 		title := frame.Title()
@@ -261,7 +269,7 @@ func (FrameLayer) Draw(ctx *Context2D) {
 			ctx.FillText(text, left+margin, top+margin+25)
 			if typ == TextType {
 				width := ctx.MeasureText(text)
-				ctx.FillRect(left+margin+width, top+margin-5, 2, 25)
+				ctx.FillRect(left+margin+width, top+margin, 2, 30)
 			}
 			if obj.execute {
 				ctx.FillStyle("#f00")
@@ -279,14 +287,19 @@ func (FrameLayer) Draw(ctx *Context2D) {
 		// Black outline
 		ctx.BeginPath()
 		ctx.Rect2(frame.pos, Sub(frame.size, Vec2{2, 2}))
+		ctx.LineWidth(2)
 		ctx.StrokeStyle("#000")
 		ctx.Stroke()
 		ctx.FillText(title, left, top)
 	}
+	ctx.Restore()
 }
 
 func (ParamNameLayer) Draw(ctx *Context2D) {
+	ctx.Save()
+	ctx.TransformToGlobal(&window)
 	ctx.FillStyle("#000")
+	ctx.TextAlign("left")
 	for _, frame := range TheVM.active.typ.(*Blueprint).Frames() {
 		params := frame.Parameters()
 		for i, param := range params {
@@ -296,9 +309,13 @@ func (ParamNameLayer) Draw(ctx *Context2D) {
 			ctx.FillText(param.Name(), pos.X, pos.Y)
 		}
 	}
+	ctx.Restore()
 }
 
 func (ParamLayer) Draw(ctx *Context2D) {
+	ctx.Save()
+	ctx.TransformToGlobal(&window)
+	ctx.LineWidth(2)
 	for _, frame := range TheVM.active.typ.(*Blueprint).Frames() {
 		local_params := frame.LocalParameters()
 		type_params := frame.TypeParameters()
@@ -325,9 +342,12 @@ func (ParamLayer) Draw(ctx *Context2D) {
 			}
 		}
 	}
+	ctx.Restore()
 }
 
 func (l LinkLayer) Draw(ctx *Context2D) {
+	ctx.Save()
+	ctx.TransformToGlobal(&window)
 	for _, frame := range TheVM.active.typ.(*Blueprint).frames {
 
 		for i, _ := range frame.params {
@@ -350,23 +370,24 @@ func (l LinkLayer) Draw(ctx *Context2D) {
 				ctx.StrokeStyle("#fff")
 				ctx.BeginPath()
 				ctx.MoveTo(0, 0)
-				ctx.LineTo(0, length-4)
+				ctx.LineTo(length-4, 0)
 				ctx.LineWidth(6.0)
 				ctx.Stroke()
 
 				// white arrow outline
 				ctx.Save()
 				ctx.FillStyle("#fff")
-				ctx.Translate(0, length+4)
+				ctx.Translate(length+4, 0)
 				ctx.Arrow(13 + 6)
 				ctx.Fill()
 				ctx.Restore()
 			}
 			// line
 			ctx.StrokeStyle("#000")
+			ctx.LineWidth(2)
 			ctx.BeginPath()
 			ctx.MoveTo(0, 0)
-			ctx.LineTo(0, length)
+			ctx.LineTo(length, 0)
 			ctx.Stroke()
 
 			// black circle
@@ -376,23 +397,25 @@ func (l LinkLayer) Draw(ctx *Context2D) {
 			ctx.Fill()
 
 			// black arrow
-			ctx.Translate(0, length)
+			ctx.Translate(length, 0)
 			ctx.Arrow(13)
 			ctx.Fill()
 
 			ctx.Restore()
 		}
-
 	}
+	ctx.Restore()
 }
 
 var shadowOffset = Vec2{margin, margin}
 
 func (BackgroundLayer) Draw(ctx *Context2D) {
+	ctx.Save()
 	ctx.FillStyle("#ddd")
 	ctx.BeginPath()
 	ctx.Rect(0, 0, window.size.X, window.size.Y)
 	ctx.Fill()
+	ctx.TransformToGlobal(&window)
 	for _, t := range Pointer.Touched {
 		if fd, ok := t.(*FrameDragging); ok {
 			f := fd.frame
@@ -403,9 +426,11 @@ func (BackgroundLayer) Draw(ctx *Context2D) {
 				for i, _ := range f.Parameters() {
 					pos := Add(f.ParamCenter(i), shadowOffset)
 					ctx.Circle(pos, param_r)
+					ctx.ClosePath()
 				}
 			})
 			ctx.Fill()
 		}
 	}
+	ctx.Restore()
 }
