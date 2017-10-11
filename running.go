@@ -1,8 +1,9 @@
 package mvm
 
 import (
-	"encoding/json"
+	"bytes"
 	"fmt"
+	"log"
 	"math"
 )
 
@@ -71,12 +72,11 @@ func (frame *Frame) MarkForExecution() {
 
 var keep_running bool = true
 
-func ProcessEvent(e Event, events chan Event, updates chan string) {
+func ProcessEvent(e Event, client Client) {
+	//fmt.Printf("Processing event %s\n", e.Type)
 	switch e.Type {
-	case "RenderDone":
-		return
 	case "RenderReady":
-		Update(updates)
+		Update(client)
 		return
 	}
 	switch e.Type {
@@ -129,7 +129,7 @@ func ProcessEvent(e Event, events chan Event, updates chan string) {
 	switch {
 	case menu != nil:
 		local := Pointer.Local
-		menu_index = int((local.Y - menu.Y + button_height/2) / (button_height + margin))
+		menu_index = int((local.Y - menu.Y + buttonHeight/2) / (buttonHeight + margin))
 		if menu_index < 0 {
 			menu_index = 0
 		}
@@ -141,41 +141,38 @@ func ProcessEvent(e Event, events chan Event, updates chan string) {
 
 var param_r float64 = 16.0
 
-func Update(updates chan string) {
-	widgets := Widgets{}
+func Update(client Client) {
+	ctx := Context2D{client, bytes.Buffer{}}
 	for i := len(GUI) - 1; i >= 0; i-- {
-		widgets.slice = append(widgets.slice, GUI[i].Draw().slice...)
+		GUI[i].Draw(&ctx)
 	}
 
-	bar := widgets.ButtonList().AlignTop(0).AlignLeft(0).Colors2("#000", "#fff", "#444", "#bbb")
+	bar := ctx.NewButtonList(1).AlignTop(0).AlignLeft(0).Colors("#000", "#fff", "#444", "#bbb")
 	for it := TheVM.active; it != nil; it = it.parent {
-		bar = bar.Add2(it.typ.Name(), it == TheVM.active)
+		bar = bar.Add(it.typ.Name(), it == TheVM.active)
 	}
 	_, dragging := Pointer.Touched["Shift"]
-	widgets.ButtonList().
-		Dir(-1).
+	ctx.NewButtonList(-1).
 		AlignLeft(0).
 		AlignBottom(window.size.Y).
-		Add2("navigate", nav).
-		Add2("drag", dragging)
+		Add("navigate", nav).
+		Add("drag", dragging)
 
 	if menu != nil {
-		buttons := widgets.ButtonList().
+		buttons := ctx.NewButtonList(1).
 			PositionAt(*menu).
-			Add2("cancel", menu_index == 0)
+			Add("cancel", menu_index == 0)
 		for i, t := range menu_types {
-			buttons.Add2(t.Name(), menu_index == i+1)
+			buttons.Add(t.Name(), menu_index == i+1)
 		}
 	}
 
-	update, err := json.Marshal(widgets)
-	if err != nil {
-		updates <- fmt.Sprintf(
-			`[{"type": "text", "x": %d, "y": %f, "value": "%v"}]`,
-			0, window.size.Y, err)
-		return
+	up, _ := ctx.MarshalJSON()
+	up2 := string(up)
+	response := client.Call(up2)
+	if response.Type != "RenderDone" {
+		log.Fatal("Response from render call was " + response.Type)
 	}
-	updates <- string(update)
 }
 
 func MakeArgs(f *Frame, blueprint *Object) Args {
@@ -234,6 +231,10 @@ type Event struct {
 	Code          string
 	Key           string
 	Object        *Object
+}
+
+type Client interface {
+	Call(request string) Event
 }
 
 /*

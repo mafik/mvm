@@ -4,7 +4,16 @@ import "testing"
 
 type TestCase struct {
 	bp *Blueprint
+	fc FakeClient
+}
+
+type FakeClient struct {
+	ev chan Event
 	up chan string
+}
+
+func (c *FakeClient) Call(req string) (resp Event) {
+	return
 }
 
 func (tc *TestCase) PointAt(x, y float64) {
@@ -13,7 +22,7 @@ func (tc *TestCase) PointAt(x, y float64) {
 		X:    x,
 		Y:    y,
 	}
-	ProcessEvent(e, tc.up)
+	ProcessEvent(e, &tc.fc)
 }
 
 func (tc *TestCase) Type(code, key string) {
@@ -21,19 +30,22 @@ func (tc *TestCase) Type(code, key string) {
 		Type: "KeyDown",
 		Code: code,
 		Key:  key,
-	}, tc.up)
+	}, &tc.fc)
 	ProcessEvent(Event{
 		Type: "KeyUp",
 		Code: code,
 		Key:  key,
-	}, tc.up)
+	}, &tc.fc)
 }
 
 func setupTest() (tc TestCase) {
 	TheVM = &VM{}
 	window = Window{1, Vec2{1000, 1000}, Vec2{500, 500}}
 	tc.bp = MakeBlueprint("test")
-	tc.up = make(chan string, 1000)
+	tc.fc = FakeClient{
+		ev: make(chan Event, 1000),
+		up: make(chan string, 1000),
+	}
 	TheVM.active = MakeObject(tc.bp, nil, nil)
 	tc.bp.Instantiate(TheVM.active)
 	return

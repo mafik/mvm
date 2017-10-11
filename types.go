@@ -336,33 +336,6 @@ func (link *Link) Delete() {
 	link.param.Target = nil
 }
 
-func (frame *Frame) DrawLinks(widgets *Widgets) {
-	for i, _ := range frame.params {
-		frame_parameter := &frame.params[i]
-		if frame_parameter.Target == nil {
-			continue
-		}
-		link := Link{frame, frame_parameter}
-		start := link.StartPos()
-		end := link.EndPos()
-		if frame_parameter.Stiff && start != end {
-			delta := Sub(end, start)
-			wideStart := start
-			wideEnd := Add(end, ScaleTo(delta, 4))
-			outline := widgets.Line(wideStart, wideEnd)
-			outline.Color = "#fff"
-			w := 6.0
-			outline.Width = &w
-			outline.End = MakeArrow()
-			outline.End.Scale = (13. + 6.) / 13.
-			outline.End.Value.(*ArrowWidget).Color = "#fff"
-		}
-		line := widgets.Line(start, end)
-		line.Start = MakeCircle(param_r/4, "#000", "")
-		line.End = MakeArrow()
-	}
-}
-
 func GetParam(params []Parameter, name string) (int, Parameter) {
 	for i, param := range params {
 		if param.Name() == name {

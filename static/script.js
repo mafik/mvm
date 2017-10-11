@@ -11,7 +11,7 @@ function runCommand(c) {
 
 function measureText(text) {
   var w = ctx.measureText(text).width;
-  socket.send(JSON.stringify({
+  syncSocket.send(JSON.stringify({
     "type": "TextWidth",
     "width": w,
   }));
@@ -44,7 +44,8 @@ function fill() { ctx.fill(); }
 function stroke() { ctx.stroke(); }
 function clip() { ctx.clip(); }
 
-var socket = undefined;
+var eventSocket = undefined;
+var syncSocket = undefined;
 var binds = [
   {"html": "onmousedown", "mvm": "MouseDown", "x": "clientX", "y": "clientY", "button": "button"},
   {"html": "onmousemove", "mvm": "MouseMove", "x": "clientX", "y": "clientY"},
@@ -55,51 +56,51 @@ var binds = [
   {"html": "oncontextmenu"},
 ];
 
-function SocketMessage(e) {
+function SyncMessage(e) {
   var msg = JSON.parse(e.data);
   if (typeof msg[0] === 'string') {
     runCommand(msg);
   } else {
     msg.forEach(runCommand);
-    socket.send(JSON.stringify({
+    syncSocket.send(JSON.stringify({
       "type": "RenderDone",
       "time": performance.now()
     }));
-    requestAnimationFrame(function() {
-      if (socket.readyState != 1) return;
-      socket.send(JSON.stringify({
-	"type": "RenderReady",
-	"time": performance.now()
-      }));
-    });
+    RequestRendering();
   }
 };
 
+function RequestRendering() {
+  requestAnimationFrame(function() {
+    if (eventSocket.readyState != 1) return;
+    eventSocket.send(JSON.stringify({
+      "type": "RenderReady",
+      "time": performance.now()
+    }));
+  });
+}
+
 function Reconnect() {
-  ctx.clearRect(0,0,canvas.width, canvas.height);
-  ctx.save();
+  ctx.fillStyle = "#ddd";
+  ctx.fillRect(0,0,canvas.width, canvas.height);
+  ctx.fillStyle = "#000";
   ctx.textAlign = "center";
-  ctx.translate(canvas.width/2, canvas.height/2);
-  ctx.fillText("Stopped", 0, 0);
-  ctx.restore();
+  ctx.fillText("Stopped", canvas.width/2, canvas.height/2);
   setTimeout(Connect, 1000);
 };
 
 function Connect() {
-  socket = new WebSocket("ws://localhost:8000/events");
-  socket.onmessage = SocketMessage;
-  socket.onopen = SocketOpen;
-  socket.onerror = Reconnect;
-};
-
-function SocketClose() {
-  window.onresize = undefined;
-  binds.forEach(function(bind) { window[bind.html] = undefined; });
-  Reconnect();
+  if (eventSocket) eventSocket.close();
+  eventSocket = new WebSocket("ws://localhost:8000/events");
+  eventSocket.onopen = EventOpen;
+  eventSocket.onerror = Reconnect;
+  if (syncSocket) syncSocket.close();
+  syncSocket = new WebSocket("ws://localhost:8000/sync");
+  syncSocket.onmessage = SyncMessage;
 };
 
 function WindowResize(e) {
-  socket.send(JSON.stringify({
+  eventSocket.send(JSON.stringify({
     "type": "Size",
     "width": innerWidth,
     "height": innerHeight
@@ -107,7 +108,7 @@ function WindowResize(e) {
   canvas.width = innerWidth;
   canvas.height = innerHeight;
   ctx.font = '20px Iosevka';
-  draw();
+  RequestRendering();
 };
 
 function Bind(bind) {
@@ -118,19 +119,25 @@ function Bind(bind) {
 	if (key == "html" || key == "mvm") continue;
 	o[key] = e[bind[key]];
       }
-      socket.send(JSON.stringify(o));
+      eventSocket.send(JSON.stringify(o));
     }
     e.preventDefault();
     return true;
   }
 };
 
-function SocketOpen(e) {
-  socket.onerror = undefined;
+function EventOpen(e) {
+  eventSocket.onerror = undefined;
   window.onresize = WindowResize;
   window.onresize();
   binds.forEach(Bind);
-  socket.onclose = SocketClose;
+  eventSocket.onclose = EventClose;
+};
+
+function EventClose() {
+  window.onresize = undefined;
+  binds.forEach(function(bind) { window[bind.html] = undefined; });
+  Reconnect();
 };
 
 Connect();
