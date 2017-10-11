@@ -251,8 +251,13 @@ P2
 - Browsing for all machines of a given type
 - Highlighting frames with the right type
 
+Note: Keyboard
+- On small touchscreen, the key events are sent into the crosshair on the center on the screen
+- On large touchscreen, embedded keyboard objects & crosshairs can be added. Keyboard object sends the key events into the crosshairs
+- On desktop PC, physical keyboard sends the key events into the crosshair attached to the cursor
+
 TODO:
-- fix object dragging with CapsLock
+-
 
 Note: Events in complex objects
 - complex objects can send many types of events
