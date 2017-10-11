@@ -36,12 +36,18 @@ func (ctx *Context2D) MarshalJSON() ([]byte, error) {
 	return ctx.buffer.Bytes(), nil
 }
 
+var measureTextCache map[string]float64 = make(map[string]float64)
+
 func (ctx *Context2D) MeasureText(text string) float64 {
+	if width, ok := measureTextCache[text]; ok {
+		return width
+	}
 	request := fmt.Sprintf("[\"measureText\",%q]", text)
 	result, err := ctx.client.Call(request)
 	if err != nil {
 		panic("Bad result of MeasureText: " + result.Type)
 	}
+	measureTextCache[text] = result.Width
 	return result.Width
 }
 
