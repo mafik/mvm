@@ -1,6 +1,7 @@
 package mvm
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -18,9 +19,13 @@ type HttpClient struct {
 	sync_out chan string
 }
 
-func (c *HttpClient) Call(request string) (response Event) {
+func (c *HttpClient) Call(request string) (response Event, err error) {
 	c.sync_out <- request
-	response = <-c.sync_in
+	var ok bool
+	response, ok = <-c.sync_in
+	if !ok {
+		err = errors.New("Couldn't send the request")
+	}
 	return
 }
 
@@ -42,19 +47,28 @@ func Start() {
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, os.Interrupt)
 
+	quit := make(chan struct{})
 	main_chan := make(chan EventClient)
 	orphan_events := make(chan Event)
 	go func() {
-		for e := range orphan_events {
-			main_chan <- EventClient{e, nil}
+		for {
+			select {
+			case e := <-orphan_events:
+				main_chan <- EventClient{e, nil}
+			case <-quit:
+				break
+			}
 		}
 	}()
 
 	go func() {
-		<-signals
-		var e Event
-		e.Type = "Interrupt"
-		orphan_events <- e
+		select {
+		case <-signals:
+			var e Event
+			e.Type = "Interrupt"
+			orphan_events <- e
+		case <-quit:
+		}
 	}()
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -104,11 +118,21 @@ func Start() {
 			var e Event
 			err := websocket.JSON.Receive(ws, &e)
 			if err != nil {
-				fmt.Println(err)
+				fmt.Println("Events closed: ", err)
 				close(events)
 				return
 			}
-			events <- e
+			select {
+			case <-quit:
+				break
+			default:
+			}
+			select {
+			case events <- e:
+				continue
+			case <-quit:
+				break
+			}
 		}
 	}))
 
@@ -118,11 +142,16 @@ func Start() {
 		new_sync_in <- sync_in
 		new_sync_out <- sync_out
 		go func() {
-			for req := range sync_out {
-				err := websocket.Message.Send(ws, req)
-				if err != nil {
-					fmt.Println(err)
-					close(sync_out)
+			for {
+				select {
+				case req := <-sync_out:
+					err := websocket.Message.Send(ws, req)
+					if err != nil {
+						fmt.Println("Sync (out) closed:", err)
+						close(sync_out)
+					}
+				case <-quit:
+					break
 				}
 			}
 		}()
@@ -130,11 +159,15 @@ func Start() {
 			var e Event
 			err := websocket.JSON.Receive(ws, &e)
 			if err != nil {
-				fmt.Println(err)
+				fmt.Println("Sync (in) closed:", err)
 				close(sync_in)
 				return
 			}
-			sync_in <- e
+			select {
+			case sync_in <- e:
+			case <-quit:
+				break
+			}
 		}
 	}))
 
@@ -144,33 +177,69 @@ func Start() {
 
 	// Main loop
 	go func() {
-		for keep_running {
-			select {
+		for {
+			select { // give priority to main_chan
 			case ec := <-main_chan:
 				ProcessEvent(ec.event, ec.client)
-				continue
 			default:
+				select {
+				case ec := <-main_chan:
+					ProcessEvent(ec.event, ec.client)
+				case task := <-tasks:
+					task.Run(orphan_events)
+				}
 			}
-			select {
-			case ec := <-main_chan:
-				ProcessEvent(ec.event, ec.client)
-			case task := <-tasks:
-				task.Run(orphan_events)
+			if !keep_running {
+				close(quit)
+				return
 			}
 		}
 	}()
 
-	for keep_running {
-		events := <-new_events
-		sync_in := <-new_sync_in
-		sync_out := <-new_sync_out
+	for {
+		var events chan Event
+		select {
+		case events = <-new_events:
+		case <-quit:
+			return
+		}
+
+		var sync_in chan Event
+		select {
+		case sync_in = <-new_sync_in:
+		case <-quit:
+			return
+		}
+
+		var sync_out chan string
+		select {
+		case sync_out = <-new_sync_out:
+		case <-quit:
+			return
+		}
 
 		fmt.Println("New client connected")
 
 		go func() {
 			client := HttpClient{events, sync_in, sync_out}
-			for e := range events {
-				main_chan <- EventClient{e, &client}
+			for {
+				var e Event
+				var ok bool
+				select {
+				case e, ok = <-events:
+					if !ok {
+						fmt.Println("Client disconnected")
+						return
+					}
+				case <-quit:
+					return
+				}
+
+				select {
+				case main_chan <- EventClient{e, &client}:
+				case <-quit:
+					return
+				}
 			}
 		}()
 	}

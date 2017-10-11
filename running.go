@@ -3,7 +3,6 @@ package mvm
 import (
 	"bytes"
 	"fmt"
-	"log"
 	"math"
 )
 
@@ -76,6 +75,7 @@ func ProcessEvent(e Event, client Client) {
 	//fmt.Printf("Processing event %s\n", e.Type)
 	switch e.Type {
 	case "RenderReady":
+		defer func() { recover() }()
 		Update(client)
 		return
 	}
@@ -169,9 +169,9 @@ func Update(client Client) {
 
 	up, _ := ctx.MarshalJSON()
 	up2 := string(up)
-	response := client.Call(up2)
-	if response.Type != "RenderDone" {
-		log.Fatal("Response from render call was " + response.Type)
+	_, err := client.Call(up2)
+	if err != nil {
+		panic(err)
 	}
 }
 
@@ -234,7 +234,7 @@ type Event struct {
 }
 
 type Client interface {
-	Call(request string) Event
+	Call(request string) (Event, error)
 }
 
 /*
@@ -254,10 +254,13 @@ P2
 Note: Keyboard
 - On small touchscreen, the key events are sent into the crosshair on the center on the screen
 - On large touchscreen, embedded keyboard objects & crosshairs can be added. Keyboard object sends the key events into the crosshairs
-- On desktop PC, physical keyboard sends the key events into the crosshair attached to the cursor
+- On desktop PC
+  - with Caps Lock: physical keyboard sends the key events into the crosshair attached to the cursor
+  - without Caps Lock: keys open menu and (instantly) activate the appropriate option
 
 TODO:
--
+- FrameNameLayer (+nice black box for frame name)
+- menu system
 
 Note: Events in complex objects
 - complex objects can send many types of events

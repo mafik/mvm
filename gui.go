@@ -36,8 +36,8 @@ func (ctx *Context2D) MarshalJSON() ([]byte, error) {
 
 func (ctx *Context2D) MeasureText(text string) float64 {
 	request := fmt.Sprintf("[\"measureText\",%q]", text)
-	result := ctx.client.Call(request)
-	if result.Type != "TextWidth" {
+	result, err := ctx.client.Call(request)
+	if err != nil {
 		panic("Bad result of MeasureText: " + result.Type)
 	}
 	return result.Width

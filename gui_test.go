@@ -12,7 +12,7 @@ type FakeClient struct {
 	up chan string
 }
 
-func (c *FakeClient) Call(req string) (resp Event) {
+func (c *FakeClient) Call(req string) (resp Event, err error) {
 	return
 }
 
