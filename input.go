@@ -86,15 +86,6 @@ func KeyUp(e Event) {
 	switch e.Code {
 	case "Tab":
 		nav = false
-	case "ControlLeft":
-		if menu != nil && menu_index > 0 {
-			t := menu_types[menu_index-1]
-			blueprint := TheVM.active.typ.(*Blueprint)
-			frame := blueprint.AddFrame()
-			blueprint.FillWithNew(frame, t)
-			frame.pos = window.ToGlobal(*menu)
-		}
-		menu = nil
 	}
 }
 
@@ -133,15 +124,6 @@ func (OverlayLayer) Input(t *Touch, e Event) Touching {
 		return f2.Drag(t)
 	case "ShiftLeft":
 		return GUI.Drag(t)
-	case "ControlLeft":
-		local := Pointer.Local
-		menu = &local
-		menu_types = nil
-		for _, typ := range Types {
-			menu_types = append(menu_types, typ)
-		}
-		menu_types = append(menu_types, MakeBlueprint("new blueprint"))
-		return NoopTouching{}
 	case "Delete":
 		GUI.Delete(Pointer)
 		return NoopTouching{}

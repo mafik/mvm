@@ -10,6 +10,14 @@ func SetupDefault() {
 	welcome := MakeBlueprint("root")
 	TheVM.active = MakeObject(welcome, nil, nil)
 	welcome.Instantiate(TheVM.active)
+
+	var x float64
+	for _, t := range Types {
+		f := welcome.AddFrame()
+		welcome.FillWithNew(f, t)
+		f.pos.X = x
+		x += f.size.X + margin
+	}
 }
 
 var FileName string = "mvm.img"

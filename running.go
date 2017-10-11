@@ -49,11 +49,6 @@ var GUI LayerList = []Layer{
 	BackgroundLayer{},
 }
 
-// Menu
-var menu *Vec2
-var menu_index int
-var menu_types []Type
-
 func (f *Frame) ParamCenter(i int) Vec2 {
 	ret := f.pos
 	ret.X += -f.size.X/2 + param_r
@@ -126,17 +121,6 @@ func ProcessEvent(e Event, client Client) {
 	default:
 		fmt.Printf("Unknown message: %s\n", e.Type)
 	}
-	switch {
-	case menu != nil:
-		local := Pointer.Local
-		menu_index = int((local.Y - menu.Y + buttonHeight/2) / (buttonHeight + margin))
-		if menu_index < 0 {
-			menu_index = 0
-		}
-		if menu_index > len(menu_types) {
-			menu_index = len(menu_types)
-		}
-	}
 }
 
 var param_r float64 = 16.0
@@ -157,15 +141,6 @@ func Update(client Client) {
 		AlignBottom(window.size.Y).
 		Add("navigate", nav).
 		Add("drag", dragging)
-
-	if menu != nil {
-		buttons := ctx.NewButtonList(1).
-			PositionAt(*menu).
-			Add("cancel", menu_index == 0)
-		for i, t := range menu_types {
-			buttons.Add(t.Name(), menu_index == i+1)
-		}
-	}
 
 	up, _ := ctx.MarshalJSON()
 	up2 := string(up)
@@ -259,11 +234,10 @@ Note: Keyboard
   - without Caps Lock: keys open menu and (instantly) activate the appropriate option
 
 TODO:
-- move main into mvm package
 - nicer methods for frame geometry
 - menu system
-  - remove current menu, add prototypes instead
   - frame pinning
+  - shortcut to add new blueprint
 - restrict the system to localhost
 
 Note: Events in complex objects
