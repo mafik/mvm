@@ -244,15 +244,10 @@ func (f *Frame) Typ() Type {
 }
 
 func (f *Frame) Title() string {
-	tname := "nil"
-	if t := f.Type(); t != nil {
-		tname = t.Name()
-	}
-	name := fmt.Sprintf("%s:%s", f.name, tname)
 	if f.param {
-		name = "¶" + name
+		return "¶" + f.name
 	}
-	return name
+	return f.name
 }
 
 func (f *Frame) Delete() {

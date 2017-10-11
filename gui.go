@@ -10,6 +10,8 @@ import (
 var margin float64 = 5
 var buttonWidth float64 = 100
 var buttonHeight float64 = 40
+var textMargin float64 = margin * 1.5
+var textSize float64 = 20
 
 type Context2D struct {
 	client Client
@@ -252,20 +254,32 @@ func (FrameLayer) Draw(ctx *Context2D) {
 	ctx.TransformToGlobal(&window)
 	blueprint := TheVM.active.typ.(*Blueprint)
 	for _, frame := range blueprint.Frames() {
-		title := frame.Title()
 		obj := frame.Object(TheVM.active)
 		left := frame.pos.X - frame.size.X/2
 		top := frame.pos.Y - frame.size.Y/2
+		titleHeight := FrameTitleSize(0)
+
+		title := frame.Title()
+		titleWidth := ctx.MeasureText(title)
+		frameTitleWidth := FrameTitleSize(titleWidth)
+
 		if obj != nil {
+			typeName := obj.typ.Name()
+			typeNameWidth := ctx.MeasureText(typeName)
+			typeNameBox := FrameTitleSize(typeNameWidth)
+
 			// White background
-			ctx.BeginPath()
-			ctx.Rect2(frame.pos, frame.size)
 			ctx.FillStyle("#fff")
+			ctx.BeginPath()
+			ctx.Rect2(frame.pos, Sub(frame.size, Vec2{2, 2}))
 			ctx.Fill()
+			ctx.FillRect(left+frameTitleWidth, top, typeNameBox, -titleHeight)
 			typ := obj.typ
 			text := typ.String(obj.priv)
 			ctx.FillStyle("#000")
 			ctx.TextAlign("left")
+
+			ctx.FillText(typeName, left+margin+frameTitleWidth, top-textMargin)
 			ctx.FillText(text, left+margin, top+margin+25)
 			if typ == TextType {
 				width := ctx.MeasureText(text)
@@ -290,9 +304,19 @@ func (FrameLayer) Draw(ctx *Context2D) {
 		ctx.LineWidth(2)
 		ctx.StrokeStyle("#000")
 		ctx.Stroke()
-		ctx.FillText(title, left, top)
+
+		ctx.FillStyle("#000")
+		ctx.FillRect(left, top, frameTitleWidth, -titleHeight)
+		if obj != nil {
+		}
+		ctx.FillStyle("#fff")
+		ctx.FillText(title, left+margin, top-textMargin)
 	}
 	ctx.Restore()
+}
+
+func FrameTitleSize(contentSize float64) float64 {
+	return math.Max(textSize, contentSize) + margin*2
 }
 
 func (ParamNameLayer) Draw(ctx *Context2D) {
@@ -387,7 +411,7 @@ func (l LinkLayer) Draw(ctx *Context2D) {
 			ctx.LineWidth(2)
 			ctx.BeginPath()
 			ctx.MoveTo(0, 0)
-			ctx.LineTo(length, 0)
+			ctx.LineTo(length-5, 0)
 			ctx.Stroke()
 
 			// black circle
