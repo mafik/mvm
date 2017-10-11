@@ -259,8 +259,12 @@ Note: Keyboard
   - without Caps Lock: keys open menu and (instantly) activate the appropriate option
 
 TODO:
-- FrameNameLayer (+nice black box for frame name)
+- move main into mvm package
+- nicer methods for frame geometry
 - menu system
+  - remove current menu, add prototypes instead
+  - frame pinning
+- restrict the system to localhost
 
 Note: Events in complex objects
 - complex objects can send many types of events
