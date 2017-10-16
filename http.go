@@ -29,11 +29,6 @@ func (c *HttpClient) Call(request string) (response Event, err error) {
 	return
 }
 
-type EventClient struct {
-	event  Event
-	client Client
-}
-
 func Start() {
 	fmt.Println("Loading VM image...")
 	err := LoadImage()
@@ -48,25 +43,14 @@ func Start() {
 	signal.Notify(signals, os.Interrupt)
 
 	quit := make(chan struct{})
-	main_chan := make(chan EventClient)
-	orphan_events := make(chan Event)
-	go func() {
-		for {
-			select {
-			case e := <-orphan_events:
-				main_chan <- EventClient{e, nil}
-			case <-quit:
-				break
-			}
-		}
-	}()
+	main_chan := make(chan Event)
 
 	go func() {
 		select {
 		case <-signals:
 			var e Event
 			e.Type = "Interrupt"
-			orphan_events <- e
+			main_chan <- e
 		case <-quit:
 		}
 	}()
@@ -179,14 +163,14 @@ func Start() {
 	go func() {
 		for {
 			select { // give priority to main_chan
-			case ec := <-main_chan:
-				ProcessEvent(ec.event, ec.client)
+			case e := <-main_chan:
+				ProcessEvent(e)
 			default:
 				select {
-				case ec := <-main_chan:
-					ProcessEvent(ec.event, ec.client)
+				case e := <-main_chan:
+					ProcessEvent(e)
 				case task := <-tasks:
-					task.Run(orphan_events)
+					task.Run(main_chan)
 				}
 			}
 			if !keep_running {
@@ -235,8 +219,10 @@ func Start() {
 					return
 				}
 
+				e.Client = &client
+
 				select {
-				case main_chan <- EventClient{e, &client}:
+				case main_chan <- e:
 				case <-quit:
 					return
 				}

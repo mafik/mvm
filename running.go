@@ -66,12 +66,12 @@ func (frame *Frame) MarkForExecution() {
 
 var keep_running bool = true
 
-func ProcessEvent(e Event, client Client) {
+func ProcessEvent(e Event) {
 	//fmt.Printf("Processing event %s\n", e.Type)
 	switch e.Type {
 	case "RenderReady":
 		defer func() { recover() }()
-		Update(client)
+		Update(e.Client)
 		return
 	}
 	switch e.Type {
@@ -206,6 +206,7 @@ type Event struct {
 	Code          string
 	Key           string
 	Object        *Object
+	Client        Client
 }
 
 type Client interface {

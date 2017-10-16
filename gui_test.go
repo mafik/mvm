@@ -18,24 +18,27 @@ func (c *FakeClient) Call(req string) (resp Event, err error) {
 
 func (tc *TestCase) PointAt(x, y float64) {
 	e := Event{
-		Type: "MouseMove",
-		X:    x,
-		Y:    y,
+		Type:   "MouseMove",
+		X:      x,
+		Y:      y,
+		Client: &tc.fc,
 	}
-	ProcessEvent(e, &tc.fc)
+	ProcessEvent(e)
 }
 
 func (tc *TestCase) Type(code, key string) {
 	ProcessEvent(Event{
-		Type: "KeyDown",
-		Code: code,
-		Key:  key,
-	}, &tc.fc)
+		Type:   "KeyDown",
+		Code:   code,
+		Key:    key,
+		Client: &tc.fc,
+	})
 	ProcessEvent(Event{
-		Type: "KeyUp",
-		Code: code,
-		Key:  key,
-	}, &tc.fc)
+		Type:   "KeyUp",
+		Code:   code,
+		Key:    key,
+		Client: &tc.fc,
+	})
 }
 
 func setupTest() (tc TestCase) {
