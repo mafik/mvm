@@ -182,6 +182,10 @@ func (FrameLayer) Input(t *Touch, e Event) Touching {
 		f.params = append(f.params, FrameParameter{"", nil, false})
 	} else if e.Code == "Enter" {
 		f.param = !f.param
+	} else if e.Code == "KeyT" {
+		new_bp := MakeBlueprint("new blueprint")
+		parent_bp := TheVM.active.typ.(*Blueprint)
+		parent_bp.FillWithNew(f, new_bp)
 	} else {
 		initial_name := f.name
 		f.name = Edit(f.name, e)
