@@ -316,6 +316,7 @@ func (FrameLayer) Draw(ctx *Context2D) {
 		if obj != nil {
 		}
 		ctx.FillStyle("#fff")
+		ctx.TextAlign("left")
 		ctx.FillText(title, left+margin, top-textMargin)
 	}
 	ctx.Restore()
