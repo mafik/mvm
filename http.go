@@ -172,7 +172,7 @@ func Start() {
 	}))
 
 	go func() {
-		log.Fatal(http.ListenAndServe(":8000", nil))
+		log.Fatal(http.ListenAndServe("localhost:8000", nil))
 	}()
 
 	// Main loop

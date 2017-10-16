@@ -233,6 +233,7 @@ func (BackgroundLayer) Input(t *Touch, e Event) Touching {
 	if e.Code == "KeyS" {
 		bp := TheVM.active.typ.(*Blueprint)
 		f := bp.AddFrame()
+		f.pos = Pointer.Global
 		return &FrameDragging{f, Vec2{1, 1}}
 	}
 	return nil
