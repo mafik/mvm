@@ -13,7 +13,29 @@ import (
 	"golang.org/x/net/websocket"
 )
 
+type BaseClient struct {
+	editing map[interface{}]bool
+}
+
+func MakeBaseClient() BaseClient {
+	return BaseClient{make(map[interface{}]bool)}
+}
+
+func (c *BaseClient) ToggleEditing(i interface{}) {
+	if c.Editing(i) {
+		delete(c.editing, i)
+	} else {
+		c.editing[i] = true
+	}
+}
+
+func (c *BaseClient) Editing(i interface{}) bool {
+	_, found := c.editing[i]
+	return found
+}
+
 type HttpClient struct {
+	BaseClient
 	events   chan Event
 	sync_in  chan Event
 	sync_out chan string
@@ -205,7 +227,12 @@ func Start() {
 		fmt.Println("New client connected")
 
 		go func() {
-			client := HttpClient{events, sync_in, sync_out}
+			client := HttpClient{
+				MakeBaseClient(),
+				events,
+				sync_in,
+				sync_out,
+			}
 			for {
 				var e Event
 				var ok bool

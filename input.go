@@ -99,12 +99,29 @@ func (ll *LayerList) Input(t *Touch, e Event) Touching {
 	return nil
 }
 
+func HandleEdit(e Event, element interface{}, s *string) Touching {
+	if e.Code == "Tab" {
+		e.Client.ToggleEditing(element)
+		return NoopTouching{}
+	}
+	_, isEdit := editKeys[e.Code]
+	if !isEdit {
+		return nil
+	}
+	if e.Client.Editing(element) {
+		*s = Edit(*s, e)
+		return NoopTouching{}
+	}
+	return nil
+}
+
 func (OverlayLayer) Input(t *Touch, e Event) Touching {
 	bp := Pointer.FindBlueprintBelow()
-	_, isEdit := editKeys[e.Code]
-	if bp != nil && isEdit {
-		bp.name = Edit(bp.name, e)
-		return NoopTouching{}
+	if bp != nil {
+		result := HandleEdit(e, bp, &bp.name)
+		if result != nil {
+			return result
+		}
 	}
 
 	switch e.Code {
@@ -178,17 +195,9 @@ func (FrameLayer) Input(t *Touch, e Event) Touching {
 	if f == nil {
 		return nil
 	}
-	if e.Code == "KeyR" {
-		f.params = append(f.params, FrameParameter{"", nil, false})
-	} else if e.Code == "Enter" {
-		f.param = !f.param
-	} else if e.Code == "KeyT" {
-		new_bp := MakeBlueprint("new blueprint")
-		parent_bp := TheVM.active.typ.(*Blueprint)
-		parent_bp.FillWithNew(f, new_bp)
-	} else {
-		initial_name := f.name
-		f.name = Edit(f.name, e)
+	initial_name := f.name
+	result := HandleEdit(e, f, &f.name)
+	if result != nil {
 		if f.param {
 			b := f.blueprint
 			for instance, _ := range b.instances {
@@ -203,6 +212,17 @@ func (FrameLayer) Input(t *Touch, e Event) Touching {
 				}
 			}
 		}
+		return result
+	}
+
+	if e.Code == "KeyR" {
+		f.params = append(f.params, FrameParameter{"", nil, false})
+	} else if e.Code == "Enter" {
+		f.param = !f.param
+	} else if e.Code == "KeyT" {
+		new_bp := MakeBlueprint("new blueprint")
+		parent_bp := TheVM.active.typ.(*Blueprint)
+		parent_bp.FillWithNew(f, new_bp)
 	}
 	return NoopTouching{}
 }
@@ -213,8 +233,11 @@ func (ParamLayer) Input(t *Touch, e Event) Touching {
 		return nil
 	}
 	frameParam := frame.ForceGetLinkSet(name)
-	frameParam.Name = Edit(frameParam.Name, e)
-	return NoopTouching{}
+	result := HandleEdit(e, frameParam, &frameParam.Name)
+	if result != nil {
+		return result
+	}
+	return nil
 }
 
 func (LinkLayer) Input(t *Touch, e Event) Touching {

@@ -131,10 +131,6 @@ func Update(client Client) {
 		GUI[i].Draw(&ctx)
 	}
 
-	bar := ctx.NewButtonList(1).AlignTop(0).AlignLeft(0).Colors("#000", "#fff", "#444", "#bbb")
-	for it := TheVM.active; it != nil; it = it.parent {
-		bar = bar.Add(it.typ.Name(), it == TheVM.active)
-	}
 	_, dragging := Pointer.Touched["Shift"]
 	ctx.NewButtonList(-1).
 		AlignLeft(0).
@@ -211,6 +207,8 @@ type Event struct {
 
 type Client interface {
 	Call(request string) (Event, error)
+	ToggleEditing(interface{})
+	Editing(interface{}) bool
 }
 
 /*

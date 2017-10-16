@@ -9,8 +9,8 @@ import (
 
 var margin float64 = 5
 var buttonWidth float64 = 100
-var buttonHeight float64 = 40
-var textMargin float64 = margin * 1.5
+var buttonHeight float64 = textSize + margin*2
+var textMargin float64 = margin * 1.75
 var textSize float64 = 20
 
 type Context2D struct {
@@ -241,7 +241,36 @@ type Drawable interface {
 	Draw(ctx *Context2D)
 }
 
+func DrawEditingOverlay(ctx *Context2D) {
+	ctx.LineWidth(2)
+	ctx.StrokeStyle("#f00")
+	ctx.Stroke()
+	ctx.FillStyle("rgba(255,128,128,0.2)")
+	ctx.Fill()
+}
+
 func (OverlayLayer) Draw(ctx *Context2D) {
+	ctx.Save()
+	ctx.Translate(margin, margin)
+	for it := TheVM.active; it != nil; it = it.parent {
+		text := "#bbb"
+		bg := "#444"
+		if it == TheVM.active {
+			text = "#fff"
+			bg = "#000"
+		}
+		ctx.FillStyle(bg)
+		ctx.BeginPath()
+		ctx.Rect(0, 0, buttonWidth, buttonHeight)
+		ctx.Fill()
+		if ctx.client.Editing(it.typ) {
+			DrawEditingOverlay(ctx)
+		}
+		ctx.FillStyle(text)
+		ctx.FillText(it.typ.Name(), buttonWidth/2, buttonHeight-textMargin)
+		ctx.Translate(0, margin+buttonHeight)
+	}
+	ctx.Restore()
 	return
 }
 
@@ -312,8 +341,11 @@ func (FrameLayer) Draw(ctx *Context2D) {
 		ctx.Stroke()
 
 		ctx.FillStyle("#000")
-		ctx.FillRect(left, top, frameTitleWidth, -titleHeight)
-		if obj != nil {
+		ctx.BeginPath()
+		ctx.Rect(left, top, frameTitleWidth, -titleHeight)
+		ctx.Fill()
+		if ctx.client.Editing(frame) {
+			DrawEditingOverlay(ctx)
 		}
 		ctx.FillStyle("#fff")
 		ctx.TextAlign("left")
@@ -359,17 +391,22 @@ func (ParamLayer) Draw(ctx *Context2D) {
 			ctx.Stroke()
 		}
 
-		ctx.FillStyle("#fff")
-		ctx.StrokeStyle("#000")
 		for i, param := range params {
 			pos := frame.ParamCenter(i)
 			ctx.BeginPath()
 			ctx.Circle(pos, param_r)
 			if idx, _ := GetParam(type_params, param.Name()); idx >= 0 {
+				ctx.FillStyle("#fff")
 				ctx.Fill()
 			}
 			if idx, _ := GetParam(local_params, param.Name()); idx >= 0 {
-				ctx.Stroke()
+				frameParameter := frame.ForceGetLinkSet(param.Name())
+				if ctx.client.Editing(frameParameter) {
+					DrawEditingOverlay(ctx)
+				} else {
+					ctx.StrokeStyle("#000")
+					ctx.Stroke()
+				}
 			}
 		}
 	}

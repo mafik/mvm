@@ -8,6 +8,7 @@ type TestCase struct {
 }
 
 type FakeClient struct {
+	BaseClient
 	ev chan Event
 	up chan string
 }
@@ -46,8 +47,9 @@ func setupTest() (tc TestCase) {
 	window = Window{1, Vec2{1000, 1000}, Vec2{500, 500}}
 	tc.bp = MakeBlueprint("test")
 	tc.fc = FakeClient{
-		ev: make(chan Event, 1000),
-		up: make(chan string, 1000),
+		BaseClient: MakeBaseClient(),
+		ev:         make(chan Event, 1000),
+		up:         make(chan string, 1000),
 	}
 	TheVM.active = MakeObject(tc.bp, nil, nil)
 	tc.bp.Instantiate(TheVM.active)
@@ -55,11 +57,15 @@ func setupTest() (tc TestCase) {
 }
 
 func textEditSequence(tc *TestCase) {
+	tc.Type("KeyF", "f")
+	tc.Type("Tab", "")
 	tc.Type("KeyA", "a")
 	tc.Type("KeyB", "b")
 	tc.Type("Backspace", "Backspace")
 	tc.Type("Enter", "Enter")
 	tc.Type("KeyC", "c")
+	tc.Type("Tab", "")
+	tc.Type("KeyF", "f")
 }
 
 func TestFrameRename(t *testing.T) {
@@ -80,11 +86,11 @@ func TestFrameRename(t *testing.T) {
 func TestBlueprintRename(t *testing.T) {
 	tc := setupTest()
 	if tc.bp.name != "test" {
-		t.Fail()
+		t.Error("Initial Blueprint name should be \"test\"")
 	}
 	tc.PointAt(20, 20)
 	textEditSequence(&tc)
 	if tc.bp.name != "testac" {
-		t.Fail()
+		t.Error("\"testac\" !=", tc.bp.name)
 	}
 }
