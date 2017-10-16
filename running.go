@@ -238,7 +238,6 @@ TODO:
 - menu system
   - frame pinning
   - shortcut to add new blueprint
-- restrict the system to localhost
 
 Note: Events in complex objects
 - complex objects can send many types of events
