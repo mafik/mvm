@@ -84,7 +84,7 @@ func KeyDown(e Event) {
 func KeyUp(e Event) {
 	Pointer.EndTouching(e.Code)
 	switch e.Code {
-	case "Tab":
+	case "KeyF":
 		nav = false
 	}
 }
@@ -108,7 +108,7 @@ func (OverlayLayer) Input(t *Touch, e Event) Touching {
 	}
 
 	switch e.Code {
-	case "Tab":
+	case "KeyF":
 		nav = true // TODO: implement Touching interface instead
 		return NoopTouching{}
 	case "KeyS":
