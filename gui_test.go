@@ -94,3 +94,17 @@ func TestBlueprintRename(t *testing.T) {
 		t.Error("\"testac\" !=", tc.bp.name)
 	}
 }
+
+func TestOverlayIgnoresEditKeys(t *testing.T) {
+	tc := setupTest()
+	var o OverlayLayer
+	for code, _ := range editKeys {
+		e := Event{
+			Code:   code,
+			Client: &tc.fc,
+		}
+		if o.Input(&Pointer, e) != nil {
+			t.Error("Overlay layer responded to code", code)
+		}
+	}
+}

@@ -67,7 +67,7 @@ func (t TouchSnapshot) FindBlueprintBelow() *Blueprint {
 
 func (t TouchSnapshot) FindFrameBelow() *Frame {
 	for _, frame := range TheVM.active.typ.(*Blueprint).Frames() {
-		if frame.HitTest(t.Global) {
+		if frame.ContentHitTest(t.Global) {
 			return frame
 		}
 	}
@@ -76,7 +76,7 @@ func (t TouchSnapshot) FindFrameBelow() *Frame {
 
 func (t TouchSnapshot) FindFrameTitleBelow() *Frame {
 	for _, frame := range TheVM.active.typ.(*Blueprint).Frames() {
-		if frame.HitTestTitle(t.Global) {
+		if frame.TitleHitTest(t.Global) {
 			return frame
 		}
 	}

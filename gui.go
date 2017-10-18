@@ -13,6 +13,10 @@ var buttonHeight float64 = textSize + margin*2
 var textMargin float64 = margin * 1.75
 var textSize float64 = 20
 
+type TextMeasurer interface {
+	MeasureText(text string) float64
+}
+
 type Context2D struct {
 	client Client
 	buffer bytes.Buffer
@@ -292,23 +296,20 @@ func (FrameLayer) Draw(ctx *Context2D) {
 		obj := frame.Object(TheVM.active)
 		left := frame.pos.X - frame.size.X/2
 		top := frame.pos.Y - frame.size.Y/2
-		titleHeight := FrameTitleSize(0)
 
 		title := frame.Title()
 		titleWidth := ctx.MeasureText(title)
-		frameTitleWidth := FrameTitleSize(titleWidth)
+		frameTitleWidth := ButtonSize(titleWidth)
 
 		if obj != nil {
 			typeName := obj.typ.Name()
-			typeNameWidth := ctx.MeasureText(typeName)
-			typeNameBox := FrameTitleSize(typeNameWidth)
 
 			// White background
 			ctx.FillStyle("#fff")
 			ctx.BeginPath()
 			ctx.Rect2(frame.pos, Sub(frame.size, Vec2{2, 2}))
 			ctx.Fill()
-			ctx.FillRect(left+frameTitleWidth, top, typeNameBox, -titleHeight)
+			ctx.FillRect(frame.ObjectLeft(ctx), frame.ObjectTop(), frame.ObjectWidth(obj, ctx), buttonHeight)
 			typ := obj.typ
 			text := typ.String(obj.priv)
 			ctx.FillStyle("#000")
@@ -342,7 +343,7 @@ func (FrameLayer) Draw(ctx *Context2D) {
 
 		ctx.FillStyle("#000")
 		ctx.BeginPath()
-		ctx.Rect(left, top, frameTitleWidth, -titleHeight)
+		ctx.Rect(left, top, frameTitleWidth, -ButtonSize(0))
 		ctx.Fill()
 		if ctx.client.Editing(frame) {
 			DrawEditingOverlay(ctx)
@@ -352,10 +353,6 @@ func (FrameLayer) Draw(ctx *Context2D) {
 		ctx.FillText(title, left+margin, top-textMargin)
 	}
 	ctx.Restore()
-}
-
-func FrameTitleSize(contentSize float64) float64 {
-	return math.Max(textSize, contentSize) + margin*2
 }
 
 func (ParamNameLayer) Draw(ctx *Context2D) {

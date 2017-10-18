@@ -84,7 +84,7 @@ func KeyDown(e Event) {
 func KeyUp(e Event) {
 	Pointer.EndTouching(e.Code)
 	switch e.Code {
-	case "KeyF":
+	case "ControlLeft":
 		nav = false
 	}
 }
@@ -125,20 +125,9 @@ func (OverlayLayer) Input(t *Touch, e Event) Touching {
 	}
 
 	switch e.Code {
-	case "KeyF":
+	case "ControlLeft":
 		nav = true // TODO: implement Touching interface instead
 		return NoopTouching{}
-	case "KeyS":
-		o := Pointer.FindObjectBelow()
-		if o == nil {
-			return nil
-		}
-		b := o.frame.blueprint
-		f2 := b.AddFrame()
-		f2.pos = o.frame.pos
-		f2.size = o.frame.size
-		b.FillWithCopy(f2, o)
-		return f2.Drag(t)
 	case "ShiftLeft":
 		return GUI.Drag(t)
 	case "Delete":
@@ -215,11 +204,23 @@ func (FrameLayer) Input(t *Touch, e Event) Touching {
 		return result
 	}
 
-	if e.Code == "KeyR" {
+	switch e.Code {
+	case "KeyS":
+		o := Pointer.FindObjectBelow()
+		if o == nil {
+			return nil
+		}
+		b := o.frame.blueprint
+		f2 := b.AddFrame()
+		f2.pos = o.frame.pos
+		f2.size = o.frame.size
+		b.FillWithCopy(f2, o)
+		return f2.Drag(t)
+	case "KeyR":
 		f.params = append(f.params, FrameParameter{"", nil, false})
-	} else if e.Code == "Enter" {
+	case "Enter":
 		f.param = !f.param
-	} else if e.Code == "KeyT" {
+	case "KeyT":
 		new_bp := MakeBlueprint("new blueprint")
 		parent_bp := TheVM.active.typ.(*Blueprint)
 		parent_bp.FillWithNew(f, new_bp)

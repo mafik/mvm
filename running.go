@@ -49,11 +49,44 @@ var GUI LayerList = []Layer{
 	BackgroundLayer{},
 }
 
+func ButtonSize(contentSize float64) float64 {
+	return math.Max(buttonHeight, contentSize+margin*2)
+}
+
+func (f *Frame) ContentLeft() float64   { return f.pos.X - f.ContentWidth()/2 }
+func (f *Frame) ContentTop() float64    { return f.pos.Y - f.ContentHeight()/2 }
+func (f *Frame) ContentBottom() float64 { return f.pos.Y + f.ContentHeight()/2 }
+func (f *Frame) ContentRight() float64  { return f.pos.X + f.ContentWidth()/2 }
+func (f *Frame) ContentWidth() float64  { return f.size.X }
+func (f *Frame) ContentHeight() float64 { return f.size.Y }
+
+func (f *Frame) TitleLeft() float64   { return f.ContentLeft() }
+func (f *Frame) TitleTop() float64    { return f.TitleBottom() - buttonHeight }
+func (f *Frame) TitleBottom() float64 { return f.ContentTop() }
+func (f *Frame) TitleRight(m TextMeasurer) float64 {
+	return f.TitleLeft() + f.TitleWidth(m)
+}
+func (f *Frame) TitleWidth(m TextMeasurer) float64 {
+	return ButtonSize(m.MeasureText(f.Title()))
+}
+func (f *Frame) TitleHeight() float64 { return buttonHeight }
+
+func (f *Frame) ObjectLeft(m TextMeasurer) float64 { return f.TitleRight(m) }
+func (f *Frame) ObjectTop() float64                { return f.TitleTop() }
+func (f *Frame) ObjectBottom() float64             { return f.TitleBottom() }
+func (f *Frame) ObjectRight(obj *Object, m TextMeasurer) float64 {
+	return f.ObjectLeft(m) + f.ObjectWidth(obj, m)
+}
+func (f *Frame) ObjectWidth(obj *Object, m TextMeasurer) float64 {
+	return ButtonSize(m.MeasureText(obj.typ.Name()))
+}
+func (f *Frame) ObjectHeight() float64 { return f.TitleHeight() }
+
 func (f *Frame) ParamCenter(i int) Vec2 {
-	ret := f.pos
-	ret.X += -f.size.X/2 + param_r
-	ret.Y += float64(i)*(param_r*2+margin) + f.size.Y/2 + margin + param_r
-	return ret
+	return Vec2{
+		X: f.ContentLeft() + param_r,
+		Y: f.ContentBottom() + float64(i)*(param_r*2+margin) + margin + param_r,
+	}
 }
 
 func (frame *Frame) MarkForExecution() {
@@ -233,10 +266,10 @@ Note: Keyboard
   - without Caps Lock: keys open menu and (instantly) activate the appropriate option
 
 TODO:
-- nicer methods for frame geometry
+- drag frames with key f
+- add tab handling to text object
+- frame pinning
 - menu system
-  - frame pinning
-  - shortcut to add new blueprint
 
 Note: Events in complex objects
 - complex objects can send many types of events
