@@ -83,10 +83,6 @@ func KeyDown(e Event) {
 
 func KeyUp(e Event) {
 	Pointer.EndTouching(e.Code)
-	switch e.Code {
-	case "ControlLeft":
-		nav = false
-	}
 }
 
 func (ll *LayerList) Input(t *Touch, e Event) Touching {
@@ -117,31 +113,13 @@ func HandleEdit(e Event, element interface{}, s *string) Touching {
 
 func (OverlayLayer) Input(t *Touch, e Event) Touching {
 	bp := Pointer.FindBlueprintBelow()
-	if bp != nil {
-		result := HandleEdit(e, bp, &bp.name)
-		if result != nil {
-			return result
-		}
-	}
-
-	switch e.Code {
-	case "ControlLeft":
-		nav = true // TODO: implement Touching interface instead
-		return NoopTouching{}
-	case "KeyF":
-		return GUI.Drag(t)
-	case "Delete":
-		GUI.Delete(Pointer)
-		return NoopTouching{}
-	case "Escape":
-		parent := TheVM.active.parent
-		if parent != nil {
-			TheVM.active = parent
-		}
-		return NoopTouching{}
-	default:
+	if bp == nil {
 		return nil
 	}
+	if h := HandleEdit(e, bp, &bp.name); h != nil {
+		return h
+	}
+	return nil
 }
 
 func (ObjectLayer) Input(t *Touch, e Event) Touching {
@@ -149,7 +127,7 @@ func (ObjectLayer) Input(t *Touch, e Event) Touching {
 	if o == nil {
 		return nil
 	}
-	if _, ok := o.typ.(*Blueprint); e.Code == "Enter" && ok {
+	if _, ok := o.typ.(*Blueprint); e.Code == "KeyE" && ok {
 		TheVM.active = o
 	} else if o.typ == TextType {
 		buf := bytes.NewBuffer(o.priv.([]byte))
@@ -205,6 +183,8 @@ func (FrameLayer) Input(t *Touch, e Event) Touching {
 	}
 
 	switch e.Code {
+	case "KeyF":
+		return f.StartDrag(t)
 	case "KeyS":
 		o := Pointer.FindObjectBelow()
 		if o == nil {
@@ -216,16 +196,22 @@ func (FrameLayer) Input(t *Touch, e Event) Touching {
 		f2.size = o.frame.size
 		b.FillWithCopy(f2, o)
 		return f2.Drag(t)
+	case "KeyQ":
+		f.Delete()
+		return NoopTouching{}
 	case "KeyR":
 		f.params = append(f.params, FrameParameter{"", nil, false})
-	case "Enter":
+		return NoopTouching{}
+	case "KeyE":
 		f.param = !f.param
+		return NoopTouching{}
 	case "KeyT":
 		new_bp := MakeBlueprint("new blueprint")
 		parent_bp := TheVM.active.typ.(*Blueprint)
 		parent_bp.FillWithNew(f, new_bp)
+		return NoopTouching{}
 	}
-	return NoopTouching{}
+	return nil
 }
 
 func (ParamLayer) Input(t *Touch, e Event) Touching {
@@ -238,6 +224,18 @@ func (ParamLayer) Input(t *Touch, e Event) Touching {
 	if result != nil {
 		return result
 	}
+	switch e.Code {
+	case "KeyF":
+		target := frame.blueprint.MakeLinkTarget()
+		target.pos = t.Global
+		return frame.AddLink(name, target)
+	case "KeyQ":
+		index, _ := GetParam(frame.LocalParameters(), name)
+		if index != -1 {
+			frame.params = append(frame.params[:index], frame.params[index+1:]...)
+			return NoopTouching{}
+		}
+	}
 	return nil
 }
 
@@ -246,19 +244,46 @@ func (LinkLayer) Input(t *Touch, e Event) Touching {
 	if l == nil {
 		return nil
 	}
-	if e.Code == "KeyZ" {
+	switch e.Code {
+	case "KeyF":
+		target := TheVM.active.typ.(*Blueprint).MakeLinkTarget()
+		target.pos = t.Global
+		l.SetTarget(target)
+		return l
+	case "KeyZ":
 		l.param.Stiff = !l.param.Stiff
 		if l.param.Stiff {
 			return l.source.Drag(t)
 		} else {
 			return NoopTouching{}
 		}
+	case "KeyQ:":
+		l.Delete()
+		return NoopTouching{}
 	}
 	return nil
 }
 
+type NavTouching struct{}
+
+func (NavTouching) Move(*Touch) {}
+func (NavTouching) End(*Touch)  { nav = false }
+func Navigate() Touching {
+	nav = true
+	return NavTouching{}
+}
+
 func (BackgroundLayer) Input(t *Touch, e Event) Touching {
-	if e.Code == "KeyS" {
+	switch e.Code {
+	case "KeyW":
+		parent := TheVM.active.parent
+		if parent != nil {
+			TheVM.active = parent
+		}
+		return NoopTouching{}
+	case "KeyD":
+		return Navigate()
+	case "KeyS":
 		bp := TheVM.active.typ.(*Blueprint)
 		f := bp.AddFrame()
 		f.pos = Pointer.Global

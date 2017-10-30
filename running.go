@@ -24,8 +24,6 @@ var nav bool
 
 type Layer interface {
 	Drawable
-	Deletable
-	Draggable
 	Input
 }
 
@@ -251,12 +249,22 @@ P0
 
 P1
 - Do a proper menu
-- Sort out keybindings
 
 P2
 - Minimum & maximum number of arguments
 - Browsing for all machines of a given type
 - Highlighting frames with the right type
+
+TODO:
+- add tab handling to text object
+- frame pinning
+- menu system
+
+Note: Input events
+- Events are delivered to GUI elements in reverse-draw order
+- Keyboard events activate quick actions by default
+- Objects can be placed into edit mode with the "Tab" key
+-
 
 Note: Keyboard
 - On small touchscreen, the key events are sent into the crosshair on the center on the screen
@@ -264,11 +272,6 @@ Note: Keyboard
 - On desktop PC
   - with Caps Lock: physical keyboard sends the key events into the crosshair attached to the cursor
   - without Caps Lock: keys open menu and (instantly) activate the appropriate option
-
-TODO:
-- add tab handling to text object
-- frame pinning
-- menu system
 
 Note: Events in complex objects
 - complex objects can send many types of events

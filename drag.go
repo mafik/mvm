@@ -1,19 +1,5 @@
 package mvm
 
-// On-screen element that can be dragged around.
-type Draggable interface {
-	Drag(*Touch) Touching
-}
-
-func (c *LayerList) Drag(touch *Touch) Touching {
-	for _, elem := range *c {
-		if t := elem.Drag(touch); t != nil {
-			return t
-		}
-	}
-	return nil
-}
-
 // Links & Params
 
 var LinkTargetType Type = &PrimitiveType{
@@ -27,27 +13,6 @@ func (b *Blueprint) MakeLinkTarget() *Frame {
 	f := b.AddFrame()
 	b.FillWithNew(f, LinkTargetType)
 	return f
-}
-
-func (ParamLayer) Drag(t *Touch) Touching {
-	frame, param := t.FindParamBelow()
-	if frame == nil {
-		return nil
-	}
-	target := frame.blueprint.MakeLinkTarget()
-	target.pos = t.Global
-	return frame.AddLink(param, target)
-}
-
-func (LinkLayer) Drag(t *Touch) Touching {
-	link := t.PointedLink()
-	if link == nil {
-		return nil
-	}
-	target := TheVM.active.typ.(*Blueprint).MakeLinkTarget()
-	target.pos = t.Global
-	link.SetTarget(target)
-	return link
 }
 
 func (l *Link) Move(touch *Touch) {
@@ -67,11 +32,7 @@ func (l *Link) End(touch *Touch) {
 
 // Frames
 
-func (FrameLayer) Drag(t *Touch) Touching {
-	frame := t.FindFrameBelow()
-	if frame == nil {
-		return nil
-	}
+func (frame *Frame) StartDrag(t *Touch) Touching {
 	low, high := -1./6., 1./6.
 	frac := Div(Sub(t.Global, frame.pos), frame.size)
 	var cell Vec2
@@ -128,8 +89,3 @@ func (d *FrameDragging) Move(t *Touch) {
 }
 
 func (*FrameDragging) End(*Touch) {}
-
-func (BackgroundLayer) Drag(*Touch) Touching { return nil }
-func (ParamNameLayer) Drag(*Touch) Touching  { return nil }
-func (OverlayLayer) Drag(*Touch) Touching    { return nil }
-func (ObjectLayer) Drag(*Touch) Touching     { return nil }
