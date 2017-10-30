@@ -1,11 +1,11 @@
 package mvm
 
 import (
-	"bytes"
 	"fmt"
 )
 
 var editKeys = map[string]bool{
+	"Enter":        true,
 	"Backspace":    true,
 	"Space":        true,
 	"KeyQ":         true,
@@ -65,6 +65,8 @@ func Edit(base string, e Event) string {
 		} else {
 			return base
 		}
+	case "Enter":
+		return base + "\n"
 	default:
 		return base + e.Key
 	}
@@ -95,13 +97,16 @@ func (ll *LayerList) Input(t *Touch, e Event) Touching {
 	return nil
 }
 
-func HandleEdit(e Event, element interface{}, s *string) Touching {
+func HandleEdit(e Event, element interface{}, s *string, allowBreaks bool) Touching {
 	if e.Code == "Tab" {
 		e.Client.ToggleEditing(element)
 		return NoopTouching{}
 	}
 	_, isEdit := editKeys[e.Code]
 	if !isEdit {
+		return nil
+	}
+	if e.Code == "Enter" && !allowBreaks {
 		return nil
 	}
 	if e.Client.Editing(element) {
@@ -116,7 +121,7 @@ func (OverlayLayer) Input(t *Touch, e Event) Touching {
 	if bp == nil {
 		return nil
 	}
-	if h := HandleEdit(e, bp, &bp.name); h != nil {
+	if h := HandleEdit(e, bp, &bp.name, false); h != nil {
 		return h
 	}
 	return nil
@@ -130,22 +135,13 @@ func (ObjectLayer) Input(t *Touch, e Event) Touching {
 	if _, ok := o.typ.(*Blueprint); e.Code == "KeyE" && ok {
 		TheVM.active = o
 	} else if o.typ == TextType {
-		buf := bytes.NewBuffer(o.priv.([]byte))
-		switch e.Key {
-		case "Backspace":
-			cut := true
-			trimmed := bytes.TrimRightFunc(buf.Bytes(), func(r rune) bool {
-				ret := cut
-				cut = false
-				return ret
-			})
-			buf.Truncate(len(trimmed))
-		case "Enter":
-			buf.WriteString("\n")
-		default:
-			buf.WriteString(e.Key)
+		s := string(o.priv.([]byte))
+		h := HandleEdit(e, o, &s, true)
+		if h == nil {
+			return nil
 		}
-		o.priv = buf.Bytes()
+		o.priv = []byte(s)
+		return h
 	} else if e.Code == "Space" {
 		o.MarkForExecution()
 	} else {
@@ -163,7 +159,7 @@ func (FrameLayer) Input(t *Touch, e Event) Touching {
 		return nil
 	}
 	initial_name := f.name
-	result := HandleEdit(e, f, &f.name)
+	result := HandleEdit(e, f, &f.name, false)
 	if result != nil {
 		if f.param {
 			b := f.blueprint
@@ -220,7 +216,7 @@ func (ParamLayer) Input(t *Touch, e Event) Touching {
 		return nil
 	}
 	frameParam := frame.ForceGetLinkSet(name)
-	result := HandleEdit(e, frameParam, &frameParam.Name)
+	result := HandleEdit(e, frameParam, &frameParam.Name, false)
 	if result != nil {
 		return result
 	}

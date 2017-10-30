@@ -312,14 +312,19 @@ func (FrameLayer) Draw(ctx *Context2D) {
 			ctx.FillRect(frame.ObjectLeft(ctx), frame.ObjectTop(), frame.ObjectWidth(obj, ctx), buttonHeight)
 			typ := obj.typ
 			text := typ.String(obj.priv)
+			lines := strings.Split(text, "\n")
 			ctx.FillStyle("#000")
 			ctx.TextAlign("left")
 
 			ctx.FillText(typeName, left+margin+frameTitleWidth, top-textMargin)
-			ctx.FillText(text, left+margin, top+margin+25)
+
+			for i, line := range lines {
+				ctx.FillText(line, left+margin, top+margin+float64(i+1)*25)
+			}
+
 			if typ == TextType {
-				width := ctx.MeasureText(text)
-				ctx.FillRect(left+margin+width, top+margin, 2, 30)
+				width := ctx.MeasureText(lines[len(lines)-1])
+				ctx.FillRect(left+margin+width, top+margin+float64(len(lines)-1)*25, 2, 30)
 			}
 			if obj.execute {
 				ctx.FillStyle("#f00")
@@ -337,9 +342,13 @@ func (FrameLayer) Draw(ctx *Context2D) {
 		// Black outline
 		ctx.BeginPath()
 		ctx.Rect2(frame.pos, Sub(frame.size, Vec2{2, 2}))
-		ctx.LineWidth(2)
-		ctx.StrokeStyle("#000")
-		ctx.Stroke()
+		if ctx.client.Editing(obj) {
+			DrawEditingOverlay(ctx)
+		} else {
+			ctx.LineWidth(2)
+			ctx.StrokeStyle("#000")
+			ctx.Stroke()
+		}
 
 		ctx.FillStyle("#000")
 		ctx.BeginPath()

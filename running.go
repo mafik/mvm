@@ -256,7 +256,6 @@ P2
 - Highlighting frames with the right type
 
 TODO:
-- add tab handling to text object
 - frame pinning
 - menu system
 
