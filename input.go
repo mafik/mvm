@@ -206,6 +206,15 @@ func (FrameLayer) Input(t *Touch, e Event) Touching {
 		parent_bp := TheVM.active.typ.(*Blueprint)
 		parent_bp.FillWithNew(f, new_bp)
 		return NoopTouching{}
+	case "KeyX":
+		o := f.Object(TheVM.active)
+		clip := e.Client.Clipboard()
+		b := clip.typ.(*Blueprint)
+		f2 := b.AddFrame()
+		f2.pos = f.pos
+		f2.size = f.size
+		b.FillWithCopy(f2, o)
+		return f2.Drag(t)
 	}
 	return nil
 }

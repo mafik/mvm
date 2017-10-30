@@ -14,11 +14,14 @@ import (
 )
 
 type BaseClient struct {
-	editing map[interface{}]bool
+	editing   map[interface{}]bool
+	clipboard *Object
 }
 
 func MakeBaseClient() BaseClient {
-	return BaseClient{make(map[interface{}]bool)}
+	bp := MakeBlueprint("Clipboard")
+	clipboard := MakeObject(bp, nil, nil)
+	return BaseClient{make(map[interface{}]bool), clipboard}
 }
 
 func (c *BaseClient) ToggleEditing(i interface{}) {
@@ -32,6 +35,10 @@ func (c *BaseClient) ToggleEditing(i interface{}) {
 func (c *BaseClient) Editing(i interface{}) bool {
 	_, found := c.editing[i]
 	return found
+}
+
+func (c *BaseClient) Clipboard() *Object {
+	return c.clipboard
 }
 
 type HttpClient struct {

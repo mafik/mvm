@@ -240,6 +240,7 @@ type Client interface {
 	Call(request string) (Event, error)
 	ToggleEditing(interface{})
 	Editing(interface{}) bool
+	Clipboard() *Object
 }
 
 /*
