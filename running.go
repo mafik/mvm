@@ -266,7 +266,6 @@ Note: Keyboard
   - without Caps Lock: keys open menu and (instantly) activate the appropriate option
 
 TODO:
-- drag frames with key f
 - add tab handling to text object
 - frame pinning
 - menu system

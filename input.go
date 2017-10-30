@@ -128,7 +128,7 @@ func (OverlayLayer) Input(t *Touch, e Event) Touching {
 	case "ControlLeft":
 		nav = true // TODO: implement Touching interface instead
 		return NoopTouching{}
-	case "ShiftLeft":
+	case "KeyF":
 		return GUI.Drag(t)
 	case "Delete":
 		GUI.Delete(Pointer)
