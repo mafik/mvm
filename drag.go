@@ -1,5 +1,7 @@
 package mvm
 
+import . "github.com/mafik/mvm/vec2"
+
 // Links & Params
 
 var LinkTargetType Type = &PrimitiveType{
@@ -11,6 +13,7 @@ var LinkTargetType Type = &PrimitiveType{
 
 func (b *Blueprint) MakeLinkTarget() *Frame {
 	f := b.AddFrame()
+	f.Hidden = true
 	b.FillWithNew(f, LinkTargetType)
 	return f
 }
@@ -20,7 +23,7 @@ func (l *Link) Move(touch *Touch) {
 }
 
 func (l *Link) End(touch *Touch) {
-	frame := touch.FindFrameBelow()
+	frame := FindFrameBelow(l.source.blueprint, touch.TouchSnapshot)
 	if frame == nil {
 		l.B().Delete()
 	} else {

@@ -1,5 +1,7 @@
 package mvm
 
+import . "github.com/mafik/mvm/vec2"
+
 type TouchSnapshot struct {
 	Local  Vec2
 	Global Vec2
@@ -50,12 +52,12 @@ func (noop NoopTouching) End(*Touch)  {}
 
 var Pointer = Touch{Touched: map[string]Touching{}}
 
-func (t TouchSnapshot) FindBlueprintBelow() *Blueprint {
+func FindBlueprintBelow(b *Object, t TouchSnapshot) *Blueprint {
 	left := margin
 	right := left + buttonWidth
 	top := margin
 	p := t.Local
-	for it := TheVM.active; it != nil; it = it.parent {
+	for it := b; it != nil; it = it.parent {
 		bottom := top + buttonHeight
 		if p.X > left && p.X < right && p.Y > top && p.Y < bottom {
 			return it.typ.(*Blueprint)
@@ -65,8 +67,8 @@ func (t TouchSnapshot) FindBlueprintBelow() *Blueprint {
 	return nil
 }
 
-func (t TouchSnapshot) FindFrameBelow() *Frame {
-	for _, frame := range TheVM.active.typ.(*Blueprint).Frames() {
+func FindFrameBelow(b *Blueprint, t TouchSnapshot) *Frame {
+	for _, frame := range b.Frames() {
 		if frame.ContentHitTest(t.Global) {
 			return frame
 		}
@@ -74,8 +76,8 @@ func (t TouchSnapshot) FindFrameBelow() *Frame {
 	return nil
 }
 
-func (t TouchSnapshot) FindFrameTitleBelow() *Frame {
-	for _, frame := range TheVM.active.typ.(*Blueprint).Frames() {
+func FindFrameTitleBelow(b *Blueprint, t TouchSnapshot) *Frame {
+	for _, frame := range b.Frames() {
 		if frame.TitleHitTest(t.Global) {
 			return frame
 		}
@@ -83,16 +85,16 @@ func (t TouchSnapshot) FindFrameTitleBelow() *Frame {
 	return nil
 }
 
-func (t TouchSnapshot) FindObjectBelow() *Object {
-	machine := TheVM.active.priv.(*Machine)
-	frame := t.FindFrameBelow()
+func FindObjectBelow(b *Object, t TouchSnapshot) *Object {
+	machine := b.priv.(*Machine)
+	frame := FindFrameBelow(b.typ.(*Blueprint), t)
 	return machine.objects[frame]
 }
 
-func (t TouchSnapshot) FindParamBelow() (*Frame, string) {
-	blueprint := TheVM.active.typ.(*Blueprint)
-	for _, f := range blueprint.Frames() {
-		for i, param := range f.Parameters() {
+func FindParamBelow(blueprintInstance *Object, t TouchSnapshot) (*Frame, string) {
+	b := blueprintInstance.typ.(*Blueprint)
+	for _, f := range b.Frames() {
+		for i, param := range f.Parameters(blueprintInstance) {
 			if CircleClicked(f.ParamCenter(i), t.Global) {
 				return f, param.Name()
 			}
@@ -117,9 +119,9 @@ func LinkDist(p Vec2, link *Link) float64 {
 	return Dist(p, proj)
 }
 
-func (t TouchSnapshot) PointedLink() (best *Link) {
+func PointedLink(b *Blueprint, t TouchSnapshot) (best *Link) {
 	best_dist := 8.0
-	for _, frame := range TheVM.active.typ.(*Blueprint).frames {
+	for _, frame := range b.frames {
 		for i, _ := range frame.params {
 			frame_parameter := &frame.params[i]
 			if frame_parameter.Target == nil {

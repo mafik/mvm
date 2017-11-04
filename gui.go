@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"math"
 	"strings"
+
+	. "github.com/mafik/mvm/vec2"
 )
 
 var margin float64 = 5
@@ -253,13 +255,13 @@ func DrawEditingOverlay(ctx *Context2D) {
 	ctx.Fill()
 }
 
-func (OverlayLayer) Draw(ctx *Context2D) {
+func (layer OverlayLayer) Draw(ctx *Context2D) {
 	ctx.Save()
 	ctx.Translate(margin, margin)
-	for it := TheVM.active; it != nil; it = it.parent {
+	for it := layer.o; it != nil; it = it.parent {
 		text := "#bbb"
 		bg := "#444"
-		if it == TheVM.active {
+		if it == layer.o {
 			text = "#fff"
 			bg = "#000"
 		}
@@ -278,212 +280,15 @@ func (OverlayLayer) Draw(ctx *Context2D) {
 	return
 }
 
-func (ObjectLayer) Draw(ctx *Context2D) {
-	return
-}
-
 func (ctx *Context2D) TransformToGlobal(w *Window) {
 	ctx.Translate2(Scale(w.size, 0.5))
 	ctx.Scale(w.scale)
 	ctx.Translate2(Neg(w.center))
 }
 
-func (FrameLayer) Draw(ctx *Context2D) {
-	ctx.Save()
-	ctx.TransformToGlobal(&window)
-	blueprint := TheVM.active.typ.(*Blueprint)
-	for _, frame := range blueprint.Frames() {
-		obj := frame.Object(TheVM.active)
-		left := frame.pos.X - frame.size.X/2
-		top := frame.pos.Y - frame.size.Y/2
-
-		title := frame.Title()
-		titleWidth := ctx.MeasureText(title)
-		frameTitleWidth := ButtonSize(titleWidth)
-
-		if obj != nil {
-			typeName := obj.typ.Name()
-
-			// White background
-			ctx.FillStyle("#fff")
-			ctx.BeginPath()
-			ctx.Rect2(frame.pos, Sub(frame.size, Vec2{2, 2}))
-			ctx.Fill()
-			ctx.FillRect(frame.ObjectLeft(ctx), frame.ObjectTop(), frame.ObjectWidth(obj, ctx), buttonHeight)
-			typ := obj.typ
-			text := typ.String(obj.priv)
-			lines := strings.Split(text, "\n")
-			ctx.FillStyle("#000")
-			ctx.TextAlign("left")
-
-			ctx.FillText(typeName, left+margin+frameTitleWidth, top-textMargin)
-
-			for i, line := range lines {
-				ctx.FillText(line, left+margin, top+margin+float64(i+1)*25)
-			}
-
-			if typ == TextType {
-				width := ctx.MeasureText(lines[len(lines)-1])
-				ctx.FillRect(left+margin+width, top+margin+float64(len(lines)-1)*25, 2, 30)
-			}
-			if obj.execute {
-				ctx.FillStyle("#f00")
-				ctx.BeginPath()
-				ctx.Rect2(frame.pos, Add(frame.size, Vec2{10, 10}))
-				ctx.Fill()
-			}
-			if obj.running {
-				ctx.Save()
-				ctx.Translate2(Add(frame.pos, Vec2{frame.size.X / 2, -frame.size.Y / 2}))
-				ctx.Hourglass("#f00")
-				ctx.Restore()
-			}
-		}
-		// Black outline
-		ctx.BeginPath()
-		ctx.Rect2(frame.pos, Sub(frame.size, Vec2{2, 2}))
-		if ctx.client.Editing(obj) {
-			DrawEditingOverlay(ctx)
-		} else {
-			ctx.LineWidth(2)
-			ctx.StrokeStyle("#000")
-			ctx.Stroke()
-		}
-
-		ctx.FillStyle("#000")
-		ctx.BeginPath()
-		ctx.Rect(left, top, frameTitleWidth, -ButtonSize(0))
-		ctx.Fill()
-		if ctx.client.Editing(frame) {
-			DrawEditingOverlay(ctx)
-		}
-		ctx.FillStyle("#fff")
-		ctx.TextAlign("left")
-		ctx.FillText(title, left+margin, top-textMargin)
-	}
-	ctx.Restore()
-}
-
-func (ParamNameLayer) Draw(ctx *Context2D) {
-	ctx.Save()
-	ctx.TransformToGlobal(&window)
-	ctx.FillStyle("#000")
-	ctx.TextAlign("left")
-	for _, frame := range TheVM.active.typ.(*Blueprint).Frames() {
-		params := frame.Parameters()
-		for i, param := range params {
-			pos := frame.ParamCenter(i)
-			pos.Y -= 3
-			pos.X += param_r + margin
-			ctx.FillText(param.Name(), pos.X, pos.Y)
-		}
-	}
-	ctx.Restore()
-}
-
-func (ParamLayer) Draw(ctx *Context2D) {
-	ctx.Save()
-	ctx.TransformToGlobal(&window)
-	ctx.LineWidth(2)
-	for _, frame := range TheVM.active.typ.(*Blueprint).Frames() {
-		local_params := frame.LocalParameters()
-		type_params := frame.TypeParameters()
-		params := frame.Parameters()
-		n := len(params)
-		if n > 0 {
-			ctx.BeginPath()
-			ctx.MoveTo2(Sub(frame.ParamCenter(0), Vec2{0, param_r + margin}))
-			ctx.LineTo2(frame.ParamCenter(n - 1))
-			ctx.Stroke()
-		}
-
-		for i, param := range params {
-			pos := frame.ParamCenter(i)
-			ctx.BeginPath()
-			ctx.Circle(pos, param_r)
-			if idx, _ := GetParam(type_params, param.Name()); idx >= 0 {
-				ctx.FillStyle("#fff")
-				ctx.Fill()
-			}
-			if idx, _ := GetParam(local_params, param.Name()); idx >= 0 {
-				frameParameter := frame.ForceGetLinkSet(param.Name())
-				if ctx.client.Editing(frameParameter) {
-					DrawEditingOverlay(ctx)
-				} else {
-					ctx.StrokeStyle("#000")
-					ctx.Stroke()
-				}
-			}
-		}
-	}
-	ctx.Restore()
-}
-
-func (l LinkLayer) Draw(ctx *Context2D) {
-	ctx.Save()
-	ctx.TransformToGlobal(&window)
-	for _, frame := range TheVM.active.typ.(*Blueprint).frames {
-
-		for i, _ := range frame.params {
-			frame_parameter := &frame.params[i]
-			if frame_parameter.Target == nil {
-				continue
-			}
-			link := Link{frame, frame_parameter}
-			start := link.StartPos()
-			end := link.EndPos()
-			delta := Sub(end, start)
-			length := Len(delta)
-
-			ctx.Save()
-			ctx.Translate2(start)
-			ctx.Rotate(math.Atan2(delta.Y, delta.X))
-
-			if frame_parameter.Stiff && start != end {
-				// white line outline
-				ctx.StrokeStyle("#fff")
-				ctx.BeginPath()
-				ctx.MoveTo(0, 0)
-				ctx.LineTo(length-4, 0)
-				ctx.LineWidth(6.0)
-				ctx.Stroke()
-
-				// white arrow outline
-				ctx.Save()
-				ctx.FillStyle("#fff")
-				ctx.Translate(length+4, 0)
-				ctx.Arrow(13 + 6)
-				ctx.Fill()
-				ctx.Restore()
-			}
-			// line
-			ctx.StrokeStyle("#000")
-			ctx.LineWidth(2)
-			ctx.BeginPath()
-			ctx.MoveTo(0, 0)
-			ctx.LineTo(length-5, 0)
-			ctx.Stroke()
-
-			// black circle
-			ctx.FillStyle("#000")
-			ctx.BeginPath()
-			ctx.Circle(Vec2{0, 0}, param_r/4)
-			ctx.Fill()
-
-			// black arrow
-			ctx.Translate(length, 0)
-			ctx.Arrow(13)
-			ctx.Fill()
-
-			ctx.Restore()
-		}
-	}
-	ctx.Restore()
-}
-
 var shadowOffset = Vec2{margin, margin}
 
-func (BackgroundLayer) Draw(ctx *Context2D) {
+func (layer BackgroundLayer) Draw(ctx *Context2D) {
 	ctx.Save()
 	ctx.FillStyle("#ddd")
 	ctx.BeginPath()
@@ -497,7 +302,7 @@ func (BackgroundLayer) Draw(ctx *Context2D) {
 			ctx.BeginPath()
 			f.PropagateStiff(func(f *Frame) {
 				ctx.Rect2(Add(f.pos, shadowOffset), f.size)
-				for i, _ := range f.Parameters() {
+				for i, _ := range f.Parameters(layer.o) {
 					pos := Add(f.ParamCenter(i), shadowOffset)
 					ctx.Circle(pos, param_r)
 					ctx.ClosePath()

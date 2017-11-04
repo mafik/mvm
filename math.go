@@ -1,6 +1,10 @@
 package mvm
 
-import "math"
+import (
+	"math"
+
+	. "github.com/mafik/mvm/vec2"
+)
 
 func Limit(a, limit float64) float64 {
 	switch {

@@ -1,4 +1,4 @@
-package mvm
+package vec2
 
 import "math"
 

@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"fmt"
 	"math"
+
+	. "github.com/mafik/mvm/vec2"
 )
 
 type Window struct {
@@ -29,22 +31,28 @@ type Layer interface {
 
 // LayerList of touchable elements
 type LayerList []Layer
-type OverlayLayer struct{}
-type ObjectLayer struct{}
-type FrameLayer struct{}
-type ParamNameLayer struct{}
-type ParamLayer struct{}
-type LinkLayer struct{}
-type BackgroundLayer struct{}
+type OverlayLayer struct{ o *Object }
+type TempLayer struct{ o *Object }
+type BackgroundLayer struct{ o *Object }
 
-var GUI LayerList = []Layer{
-	OverlayLayer{},
-	ParamNameLayer{},
-	LinkLayer{},
-	ParamLayer{},
-	ObjectLayer{},
-	FrameLayer{},
-	BackgroundLayer{},
+func (layer TempLayer) Input(t *Touch, e Event) Touching {
+	return layer.o.typ.Input(layer.o, t, e)
+}
+
+func (layer TempLayer) Draw(ctx *Context2D) {
+	ctx.Save()
+	ctx.TransformToGlobal(&window)
+	layer.o.typ.Draw(layer.o, ctx)
+	ctx.Restore()
+}
+
+func GUI(c Client) LayerList {
+	//clip := c.Clipboard()
+	return []Layer{
+		OverlayLayer{TheVM.active},
+		TempLayer{TheVM.active},
+		BackgroundLayer{TheVM.active},
+	}
 }
 
 func ButtonSize(contentSize float64) float64 {
@@ -158,8 +166,9 @@ var param_r float64 = 16.0
 
 func Update(client Client) {
 	ctx := Context2D{client, bytes.Buffer{}}
-	for i := len(GUI) - 1; i >= 0; i-- {
-		GUI[i].Draw(&ctx)
+	ll := GUI(client)
+	for i := len(ll) - 1; i >= 0; i-- {
+		ll[i].Draw(&ctx)
 	}
 
 	_, dragging := Pointer.Touched["Shift"]
@@ -240,7 +249,7 @@ type Client interface {
 	Call(request string) (Event, error)
 	ToggleEditing(interface{})
 	Editing(interface{}) bool
-	Clipboard() *Object
+	Focus() *Object
 }
 
 /*

@@ -3,6 +3,8 @@ package mvm
 import (
 	"bytes"
 	"encoding/gob"
+
+	. "github.com/mafik/mvm/vec2"
 )
 
 type Serializer interface {
@@ -193,7 +195,7 @@ func (frame *Frame) Gob(s Serializer) Gob {
 }
 
 func (gob FrameGob) Ungob() Gobbable {
-	return &Frame{nil, gob.Pos, gob.Size, gob.Name, nil, gob.Param}
+	return &Frame{nil, gob.Pos, gob.Size, gob.Name, nil, gob.Param, false}
 }
 
 func (frame *Frame) Connect(d Deserializer, gob Gob) {

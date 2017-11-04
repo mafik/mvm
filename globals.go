@@ -26,6 +26,8 @@ type PrimitiveType struct {
 	copy        func(from, to *Object)
 	run         func(Args)
 	string      func(interface{}) string
+	draw        func(*Object, *Context2D)
+	input       func(*Object, *Touch, Event) Touching
 }
 
 func (t *PrimitiveType) Name() string {
@@ -58,6 +60,19 @@ func (t *PrimitiveType) String(i interface{}) string {
 	} else {
 		return fmt.Sprintf("%#v", i)
 	}
+}
+
+func (t *PrimitiveType) Draw(o *Object, c *Context2D) {
+	if t.draw != nil {
+		t.draw(o, c)
+	}
+}
+
+func (t *PrimitiveType) Input(o *Object, touch *Touch, e Event) Touching {
+	if t.input != nil {
+		return t.input(o, touch, e)
+	}
+	return nil
 }
 
 var TextType Type = &PrimitiveType{

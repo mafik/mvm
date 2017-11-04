@@ -10,18 +10,18 @@ import (
 	"os"
 	"os/signal"
 
+	"github.com/mafik/mvm/matrix"
 	"golang.org/x/net/websocket"
 )
 
 type BaseClient struct {
 	editing   map[interface{}]bool
-	clipboard *Object
+	focus     *Object
+	transform matrix.Matrix
 }
 
 func MakeBaseClient() BaseClient {
-	bp := MakeBlueprint("Clipboard")
-	clipboard := MakeObject(bp, nil, nil)
-	return BaseClient{make(map[interface{}]bool), clipboard}
+	return BaseClient{make(map[interface{}]bool), TheVM.active, matrix.Identity()}
 }
 
 func (c *BaseClient) ToggleEditing(i interface{}) {
@@ -37,8 +37,8 @@ func (c *BaseClient) Editing(i interface{}) bool {
 	return found
 }
 
-func (c *BaseClient) Clipboard() *Object {
-	return c.clipboard
+func (c *BaseClient) Focus() *Object {
+	return c.focus
 }
 
 type HttpClient struct {
