@@ -17,6 +17,7 @@ function measureText(text) {
   }));
 }
 
+function transform(a, b, c, d, e, f) { ctx.transform(a, b, c, d, e, f); }
 function translate(x, y) { ctx.translate(x, y); }
 function fillText(text, x, y) { ctx.fillText(text, x, y); }
 function fillRect(x, y, w, h) { ctx.fillRect(x, y, w, h); }
@@ -56,8 +57,12 @@ var binds = [
   {"html": "oncontextmenu"},
 ];
 
+var lastData;
+var lastMsg;
 function SyncMessage(e) {
   var msg = JSON.parse(e.data);
+  lastData = e.data;
+  lastMsg = msg;
   if (typeof msg[0] === 'string') {
     runCommand(msg);
   } else {

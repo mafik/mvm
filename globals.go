@@ -4,6 +4,10 @@ import (
 	"bytes"
 	"fmt"
 	"os/exec"
+	"strings"
+
+	"github.com/mafik/mvm/ui"
+	"github.com/mafik/mvm/vec2"
 )
 
 type FixedParameter struct {
@@ -26,8 +30,7 @@ type PrimitiveType struct {
 	copy        func(from, to *Object)
 	run         func(Args)
 	string      func(interface{}) string
-	draw        func(*Object, *Context2D)
-	input       func(*Object, *Touch, Event) Touching
+	makeWidget  func(*Object) ui.Widget
 }
 
 func (t *PrimitiveType) Name() string {
@@ -62,15 +65,9 @@ func (t *PrimitiveType) String(i interface{}) string {
 	}
 }
 
-func (t *PrimitiveType) Draw(o *Object, c *Context2D) {
-	if t.draw != nil {
-		t.draw(o, c)
-	}
-}
-
-func (t *PrimitiveType) Input(o *Object, touch *Touch, e Event) Touching {
-	if t.input != nil {
-		return t.input(o, touch, e)
+func (t *PrimitiveType) MakeWidget(o *Object) ui.Widget {
+	if t.makeWidget != nil {
+		return t.makeWidget(o)
 	}
 	return nil
 }
@@ -86,7 +83,31 @@ var TextType Type = &PrimitiveType{
 	string: func(i interface{}) string {
 		return string(i.([]byte))
 	},
+	makeWidget: func(o *Object) ui.Widget {
+		return TextWidget{o}
+	},
 }
+
+type TextWidget struct {
+	o *Object
+}
+
+func (w TextWidget) Options(vec2.Vec2) []ui.Option { return nil }
+func (w TextWidget) Size(ui.TextMeasurer) ui.Box   { return w.o.frame.ContentSize().Grow(-2) }
+func (w TextWidget) Draw(ctx *ui.Context2D) {
+	text := w.o.typ.String(w.o.priv)
+	lines := strings.Split(text, "\n")
+	ctx.FillStyle("#000")
+	ctx.TextAlign("center")
+	h := lineHeight * float64(len(lines))
+	for i, line := range lines {
+		ctx.FillText(line, 0, float64(i+1)*lineHeight-h/2-5)
+	}
+	width := ctx.MeasureText(lines[len(lines)-1])
+	ctx.FillRect(width/2, h/2, 2, -lineHeight)
+}
+func (w TextWidget) GetText() string  { return string(w.o.priv.([]byte)) }
+func (w TextWidget) SetText(s string) { w.o.priv = []byte(s) }
 
 var FormatType Type = &PrimitiveType{
 	name: "format",

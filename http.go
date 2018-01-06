@@ -10,39 +10,10 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/mafik/mvm/matrix"
 	"golang.org/x/net/websocket"
 )
 
-type BaseClient struct {
-	editing   map[interface{}]bool
-	focus     *Object
-	transform matrix.Matrix
-}
-
-func MakeBaseClient() BaseClient {
-	return BaseClient{make(map[interface{}]bool), TheVM.active, matrix.Identity()}
-}
-
-func (c *BaseClient) ToggleEditing(i interface{}) {
-	if c.Editing(i) {
-		delete(c.editing, i)
-	} else {
-		c.editing[i] = true
-	}
-}
-
-func (c *BaseClient) Editing(i interface{}) bool {
-	_, found := c.editing[i]
-	return found
-}
-
-func (c *BaseClient) Focus() *Object {
-	return c.focus
-}
-
 type HttpClient struct {
-	BaseClient
 	events   chan Event
 	sync_in  chan Event
 	sync_out chan string
@@ -235,7 +206,6 @@ func Start() {
 
 		go func() {
 			client := HttpClient{
-				MakeBaseClient(),
 				events,
 				sync_in,
 				sync_out,

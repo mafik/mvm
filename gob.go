@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/gob"
 
+	"github.com/mafik/mvm/matrix"
 	. "github.com/mafik/mvm/vec2"
 )
 
@@ -128,10 +129,11 @@ type BlueprintGob struct {
 	Name      string
 	Frames    []int
 	Instances []int
+	Transform matrix.Matrix
 }
 
 func (blue *Blueprint) Gob(s Serializer) Gob {
-	gob := BlueprintGob{Name: blue.name}
+	gob := BlueprintGob{Name: blue.name, Transform: blue.transform}
 	for _, frame := range blue.frames {
 		gob.Frames = append(gob.Frames, s.Id(frame))
 	}
@@ -146,6 +148,7 @@ func (gob BlueprintGob) Ungob() Gobbable {
 		name:      gob.Name,
 		frames:    nil,
 		instances: make(map[*Object]bool),
+		transform: gob.Transform,
 	}
 }
 

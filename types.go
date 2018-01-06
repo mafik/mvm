@@ -3,9 +3,10 @@ package mvm
 import (
 	"fmt"
 	"math"
-	"strings"
 
-	. "github.com/mafik/mvm/vec2"
+	"github.com/mafik/mvm/matrix"
+	"github.com/mafik/mvm/ui"
+	"github.com/mafik/mvm/vec2"
 )
 
 type VM struct {
@@ -16,6 +17,7 @@ type Blueprint struct {
 	name      string
 	frames    []*Frame
 	instances map[*Object]bool
+	transform matrix.Matrix
 }
 
 func (b *Blueprint) Name() string {
@@ -71,124 +73,25 @@ func (b *Blueprint) String(interface{}) string {
 	return fmt.Sprintf("%d frames", len(b.Frames()))
 }
 
-func (b *Blueprint) Draw(o *Object, ctx *Context2D) {
-	// Frames
-	for _, frame := range b.Frames() {
-		obj := frame.Object(o)
-		left := frame.pos.X - frame.size.X/2
-		top := frame.pos.Y - frame.size.Y/2
+func (b *Blueprint) MakeWidget(o *Object) ui.Widget { return BlueprintWidget{b, o} }
 
-		title := frame.Title()
-		titleWidth := ctx.MeasureText(title)
-		frameTitleWidth := ButtonSize(titleWidth)
+type BlueprintWidget struct {
+	Blueprint *Blueprint
+	Object    *Object
+}
 
-		if obj != nil {
-			typeName := obj.typ.Name()
-
-			// White background
-			ctx.FillStyle("#fff")
-			ctx.BeginPath()
-			ctx.Rect2(frame.pos, Sub(frame.size, Vec2{2, 2}))
-			ctx.Fill()
-			ctx.FillRect(frame.ObjectLeft(ctx), frame.ObjectTop(), frame.ObjectWidth(obj, ctx), buttonHeight)
-			typ := obj.typ
-			text := typ.String(obj.priv)
-			lines := strings.Split(text, "\n")
-			ctx.FillStyle("#000")
-			ctx.TextAlign("left")
-
-			ctx.FillText(typeName, left+margin+frameTitleWidth, top-textMargin)
-
-			for i, line := range lines {
-				ctx.FillText(line, left+margin, top+margin+float64(i+1)*25)
-			}
-
-			if typ == TextType {
-				width := ctx.MeasureText(lines[len(lines)-1])
-				ctx.FillRect(left+margin+width, top+margin+float64(len(lines)-1)*25, 2, 30)
-			}
-			if obj.execute {
-				ctx.FillStyle("#f00")
-				ctx.BeginPath()
-				ctx.Rect2(frame.pos, Add(frame.size, Vec2{10, 10}))
-				ctx.Fill()
-			}
-			if obj.running {
-				ctx.Save()
-				ctx.Translate2(Add(frame.pos, Vec2{frame.size.X / 2, -frame.size.Y / 2}))
-				ctx.Hourglass("#f00")
-				ctx.Restore()
-			}
-		}
-		// Black outline
-		ctx.BeginPath()
-		ctx.Rect2(frame.pos, Sub(frame.size, Vec2{2, 2}))
-		if ctx.client.Editing(obj) {
-			DrawEditingOverlay(ctx)
-		} else {
-			ctx.LineWidth(2)
-			ctx.StrokeStyle("#000")
-			ctx.Stroke()
-		}
-
-		ctx.FillStyle("#000")
-		ctx.BeginPath()
-		ctx.Rect(left, top, frameTitleWidth, -ButtonSize(0))
-		ctx.Fill()
-		if ctx.client.Editing(frame) {
-			DrawEditingOverlay(ctx)
-		}
-		ctx.FillStyle("#fff")
-		ctx.TextAlign("left")
-		ctx.FillText(title, left+margin, top-textMargin)
-	}
-
-	// Parameters
-	ctx.LineWidth(2)
-	for _, frame := range b.Frames() {
-		local_params := frame.LocalParameters()
-		type_params := frame.TypeParameters(o)
-		params := frame.Parameters(o)
-		n := len(params)
-		if n > 0 {
-			ctx.BeginPath()
-			ctx.MoveTo2(Sub(frame.ParamCenter(0), Vec2{0, param_r + margin}))
-			ctx.LineTo2(frame.ParamCenter(n - 1))
-			ctx.Stroke()
-		}
-
-		for i, param := range params {
-			pos := frame.ParamCenter(i)
-			ctx.BeginPath()
-			ctx.Circle(pos, param_r)
-			if idx, _ := GetParam(type_params, param.Name()); idx >= 0 {
-				ctx.FillStyle("#fff")
-				ctx.Fill()
-			}
-			if idx, _ := GetParam(local_params, param.Name()); idx >= 0 {
-				frameParameter := frame.ForceGetLinkSet(param.Name())
-				if ctx.client.Editing(frameParameter) {
-					DrawEditingOverlay(ctx)
-				} else {
-					ctx.StrokeStyle("#000")
-					ctx.Stroke()
-				}
-			}
-		}
-	}
-
-	// Links
+func (w BlueprintWidget) PostDraw(ctx *ui.Context2D) {
+	b := w.Blueprint
 	for _, frame := range b.frames {
 		for i, _ := range frame.params {
 			frame_parameter := &frame.params[i]
 			if frame_parameter.Target == nil {
 				continue
 			}
-			link := Link{frame, frame_parameter}
-			start := link.StartPos()
-			end := link.EndPos()
-			delta := Sub(end, start)
-			length := Len(delta)
+			start := vec2.Add(frame.ParamCenter(i), frame.pos)
+			end := frame_parameter.Target.pos
+			delta := vec2.Sub(end, start)
+			length := vec2.Len(delta)
 
 			ctx.Save()
 			ctx.Translate2(start)
@@ -222,7 +125,7 @@ func (b *Blueprint) Draw(o *Object, ctx *Context2D) {
 			// black circle
 			ctx.FillStyle("#000")
 			ctx.BeginPath()
-			ctx.Circle(Vec2{0, 0}, param_r/4)
+			ctx.Circle(vec2.Vec2{0, 0}, param_r/4)
 			ctx.Fill()
 
 			// black arrow
@@ -233,30 +136,99 @@ func (b *Blueprint) Draw(o *Object, ctx *Context2D) {
 			ctx.Restore()
 		}
 	}
+}
 
-	// Parameter names
-	ctx.FillStyle("#000")
-	ctx.TextAlign("left")
-	for _, frame := range b.Frames() {
-		params := frame.Parameters(o)
-		for i, param := range params {
-			pos := frame.ParamCenter(i)
-			pos.Y -= 3
-			pos.X += param_r + margin
-			ctx.FillText(param.Name(), pos.X, pos.Y)
+func (w BlueprintWidget) Options(pos vec2.Vec2) []ui.Option {
+	return []ui.Option{Navigate{w.Blueprint}, MakeFrame{w.Blueprint}, Zoom{w.Blueprint}}
+}
+
+func (w BlueprintWidget) Transform(ui.TextMeasurer) matrix.Matrix {
+	return w.Blueprint.transform
+}
+
+func (w BlueprintWidget) Children() []interface{} {
+	frames := w.Blueprint.frames
+	children := make([]interface{}, 0, len(frames))
+	for _, frame := range frames {
+		if frame.Hidden {
+			continue
+		}
+		children = append(children, FramedObject{frame, frame.Object(w.Object), w.Object})
+	}
+	return children
+}
+
+/*
+func (b *Blueprint) Draw(o *Object, ctx *ui.Context2D) {
+	for _, t := range Pointer.Touched {
+		if fd, ok := t.(*FrameDragging); ok {
+			f := fd.frame
+			ctx.FillStyle("#ccc")
+			ctx.BeginPath()
+			f.PropagateStiff(func(f *Frame) {
+				ctx.Rect2(Add(f.pos, shadowOffset), f.size)
+				for i, _ := range f.Parameters(o) {
+					pos := Add(f.ParamCenter(i), shadowOffset)
+					ctx.Circle(pos, param_r)
+					ctx.ClosePath()
+				}
+			})
+			ctx.Fill()
 		}
 	}
 }
+*/
 
+type Navigate struct{ blueprint *Blueprint }
+
+func (d Navigate) Activate(ui.TouchContext) ui.Action { return d }
+func (d Navigate) Keycode() string                    { return "KeyD" }
+func (d Navigate) Name() string                       { return "Navigate" }
+func (d Navigate) Move(ctx ui.TouchContext) ui.Action { return d }
+func (d Navigate) End(ui.TouchContext)                {}
+func (d Navigate) PreMove(ctx ui.TouchContext) {
+	delta := ctx.Delta()
+	ctx.Touch.Last = ctx.Touch.Curr
+	d.blueprint.transform = matrix.Multiply(matrix.Translate(delta), d.blueprint.transform)
+}
+
+type Zoom struct{ blueprint *Blueprint }
+
+func (z Zoom) Name() string    { return "Zoom" }
+func (z Zoom) Keycode() string { return "Wheel" }
+func (z Zoom) Activate(ctx ui.TouchContext) ui.Action {
+	transform := &z.blueprint.transform
+	a := ctx.Position()
+	alpha := math.Exp(-ctx.Touch.Wheel / 200)
+	transform.Scale(alpha)
+	b := ctx.Position()
+	fix := vec2.Sub(b, a)
+	*transform = matrix.Multiply(matrix.Translate(fix), *transform) // apply translation before scaling
+	return nil
+}
+
+type MakeFrame struct {
+	Blueprint *Blueprint
+}
+
+func (mf MakeFrame) Name() string    { return "New frame" }
+func (mf MakeFrame) Keycode() string { return "KeyX" }
+func (mf MakeFrame) Activate(ctx ui.TouchContext) ui.Action {
+	f := mf.Blueprint.AddFrame()
+	f.pos = ctx.Position()
+	return FrameDragging{f, vec2.Vec2{0, 0}}
+}
+
+/*
 func (b *Blueprint) LinkInput(t *Touch, e Event) Touching {
-	l := PointedLink(b, t.TouchSnapshot)
+	l := PointedLink(b, t.Global())
 	if l == nil {
 		return nil
 	}
 	switch e.Code {
 	case "KeyF":
 		target := b.MakeLinkTarget()
-		target.pos = t.Global
+		target.pos = t.Global()
 		l.SetTarget(target)
 		return l
 	case "KeyZ":
@@ -274,7 +246,7 @@ func (b *Blueprint) LinkInput(t *Touch, e Event) Touching {
 }
 
 func (b *Blueprint) ParamInput(o *Object, t *Touch, e Event) Touching {
-	frame, name := FindParamBelow(o, t.TouchSnapshot)
+	frame, name := FindParamBelow(o, t.Global())
 	if frame == nil {
 		return nil
 	}
@@ -286,7 +258,7 @@ func (b *Blueprint) ParamInput(o *Object, t *Touch, e Event) Touching {
 	switch e.Code {
 	case "KeyF":
 		target := frame.blueprint.MakeLinkTarget()
-		target.pos = t.Global
+		target.pos = t.Global()
 		return frame.AddLink(name, target)
 	case "KeyQ":
 		index, _ := GetParam(frame.LocalParameters(), name)
@@ -299,33 +271,26 @@ func (b *Blueprint) ParamInput(o *Object, t *Touch, e Event) Touching {
 }
 
 func (b *Blueprint) ObjectInput(parent *Object, t *Touch, e Event) Touching {
-	o := FindObjectBelow(parent, t.TouchSnapshot)
+	o := FindObjectBelow(parent, t.Global())
 	if o == nil {
 		return nil
 	}
-	// TODO: clean this up
 	if _, ok := o.typ.(*Blueprint); e.Code == "KeyE" && ok {
 		TheVM.active = o
-	} else if o.typ == TextType {
-		s := string(o.priv.([]byte))
-		h := HandleEdit(e, o, &s, true)
-		if h == nil {
-			return nil
-		}
-		o.priv = []byte(s)
+		return NoopTouching{}
+	} else if h := o.typ.Input(o, t, e); h != nil {
 		return h
 	} else if e.Code == "Space" {
 		o.MarkForExecution()
-	} else {
-		return nil
+		return NoopTouching{}
 	}
-	return NoopTouching{}
+	return nil
 }
 
 func (b *Blueprint) FrameInput(parent *Object, t *Touch, e Event) Touching {
-	f := FindFrameTitleBelow(b, Pointer.TouchSnapshot)
+	f := FindFrameTitleBelow(b, t.Global())
 	if f == nil {
-		f = FindFrameBelow(b, Pointer.TouchSnapshot)
+		f = FindFrameBelow(b, t.Global())
 	}
 	if f == nil {
 		return nil
@@ -386,25 +351,25 @@ func (b *Blueprint) FrameInput(parent *Object, t *Touch, e Event) Touching {
 	return nil
 }
 
-func (b *Blueprint) Input(o *Object, t *Touch, e Event) Touching {
-	// Links
-	if result := b.LinkInput(t, e); result != nil {
-		return result
-	}
-	// Params
-	if result := b.ParamInput(o, t, e); result != nil {
-		return result
-	}
-	// Objects
-	if result := b.ObjectInput(o, t, e); result != nil {
-		return result
-	}
-	// Frames
-	if result := b.FrameInput(o, t, e); result != nil {
-		return result
+func (b *Blueprint) BackgroundInput(o *Object, t *Touch, e Event) Touching {
+	switch e.Code {
+	case "KeyW":
+		parent := TheVM.active.parent
+		if parent != nil {
+			TheVM.active = parent
+		}
+		return NoopTouching{}
+	case "KeyD":
+		return Navigate()
+	case "KeyS":
+		f := b.AddFrame()
+		f.pos = Pointer.Vec2
+		return &FrameDragging{f, Vec2{1, 1}}
 	}
 	return nil
+
 }
+*/
 
 type BlueprintParameter struct {
 }
@@ -423,27 +388,6 @@ func (p *BlueprintParameter) Run(Args) {}
 
 func (p *BlueprintParameter) String(interface{}) string { return "" }
 
-type Link struct {
-	source *Frame
-	param  *FrameParameter
-}
-
-type FrameParameter struct {
-	Name   string
-	Target *Frame
-	Stiff  bool
-}
-
-type Frame struct {
-	blueprint *Blueprint
-	pos       Vec2
-	size      Vec2
-	name      string
-	params    []FrameParameter
-	param     bool
-	Hidden    bool
-}
-
 type Args map[string]*Object
 
 type Parameter interface {
@@ -458,33 +402,17 @@ type Type interface {
 	Copy(from, to *Object)
 	Run(Args)
 	String(interface{}) string
-
-	Draw(*Object, *Context2D)
-	Input(*Object, *Touch, Event) Touching
+	MakeWidget(*Object) ui.Widget
 }
 
 type Machine struct {
 	objects map[*Frame]*Object
 }
 
-type Object struct {
-	parent  *Object
-	frame   *Frame
-	execute bool
-	running bool
-	typ     Type
-	priv    interface{}
-}
-
 func (vm VM) AvailableBlueprints() (bl []*Blueprint, active int) {
 	bl = append(bl, vm.active.typ.(*Blueprint))
 	active = 0
 	return
-}
-
-func (o *Object) MarkForExecution() {
-	o.execute = true
-	tasks <- o
 }
 
 func MakeParameter() *BlueprintParameter {
@@ -496,27 +424,15 @@ func MakeBlueprint(name string) *Blueprint {
 		name:      name,
 		frames:    nil,
 		instances: make(map[*Object]bool),
+		transform: matrix.Identity(),
 	}
-}
-
-func MakeObject(typ Type, frame *Frame, parent *Object) *Object {
-	o := &Object{
-		typ:    typ,
-		frame:  frame,
-		parent: parent,
-	}
-	if parent != nil {
-		m := parent.priv.(*Machine)
-		m.objects[frame] = o
-	}
-	return o
 }
 
 func (bp *Blueprint) AddFrame() *Frame {
 	frame := &Frame{
 		blueprint: bp,
-		pos:       Vec2{0, 0},
-		size:      Vec2{100, 100},
+		pos:       vec2.Vec2{0, 0},
+		size:      vec2.Vec2{100, 100},
 	}
 	bp.frames = append(bp.frames, frame)
 	return frame
@@ -546,35 +462,6 @@ func (f *Frame) Type(blueprintInstance *Object) Type {
 		return nil
 	}
 	return o.typ
-}
-
-func (f *Frame) LocalParameters() (params []Parameter) {
-	for _, frame_parameter := range f.params {
-		params = append(params, &FixedParameter{frame_parameter.Name, nil})
-	}
-	return params
-}
-
-func (f *Frame) TypeParameters(blueprintInstance *Object) []Parameter {
-	t := f.Type(blueprintInstance)
-	if t == nil {
-		return nil
-	}
-	return t.Parameters()
-}
-
-func (f *Frame) Parameters(blueprintInstance *Object) (params []Parameter) {
-	params = f.LocalParameters()
-	if typ := f.Type(blueprintInstance); typ != nil {
-		for _, tp := range typ.Parameters() {
-			_, existing := GetParam(params, tp.Name())
-			if existing != nil {
-				continue
-			}
-			params = append(params, tp)
-		}
-	}
-	return params
 }
 
 func (f *Frame) Name() string {
@@ -611,38 +498,6 @@ func (f *Frame) Delete() {
 	}
 }
 
-func (f *Frame) TitleHitTest(p Vec2) bool {
-	l := f.pos
-	s := f.size
-	switch {
-	case p.X < f.TitleLeft():
-		return false
-	case p.X > l.X+s.X/2:
-		return false
-	case p.Y < f.TitleTop():
-		return false
-	case p.Y > f.TitleBottom():
-		return false
-	}
-	return true
-}
-
-func (f *Frame) ContentHitTest(p Vec2) bool {
-	l := f.pos
-	s := f.size
-	switch {
-	case p.X < l.X-s.X/2:
-		return false
-	case p.X > l.X+s.X/2:
-		return false
-	case p.Y < l.Y-s.Y/2:
-		return false
-	case p.Y > l.Y+s.Y/2:
-		return false
-	}
-	return true
-}
-
 func (e *Frame) PropagateStiff(cb func(*Frame)) {
 	visited := map[*Frame]bool{}
 	for f, q := e, []*Frame{e}; len(q) > 0; f, q = q[len(q)-1], q[:len(q)-1] {
@@ -658,20 +513,6 @@ func (e *Frame) PropagateStiff(cb func(*Frame)) {
 		}
 	}
 }
-func (link Link) StartPos() Vec2 {
-	i, _ := GetParam(link.source.LocalParameters(), link.param.Name)
-	return link.source.ParamCenter(i)
-}
-
-func (link Link) EndPos() Vec2 {
-	a := link.StartPos()
-	target := link.B()
-	return Ray(a, target.pos, target.size)
-}
-
-func (link *Link) Delete() {
-	link.param.Target = nil
-}
 
 func GetParam(params []Parameter, name string) (int, Parameter) {
 	for i, param := range params {
@@ -680,36 +521,4 @@ func GetParam(params []Parameter, name string) (int, Parameter) {
 		}
 	}
 	return -1, nil
-}
-
-func (f *Frame) GetLinkSet(param_name string) *FrameParameter {
-	for i, frame_parameter := range f.params {
-		if frame_parameter.Name == param_name {
-			return &f.params[i]
-		}
-	}
-	return nil
-}
-
-func (f *Frame) ForceGetLinkSet(param_name string) *FrameParameter {
-	links := f.GetLinkSet(param_name)
-	if links == nil {
-		f.params = append(f.params, FrameParameter{param_name, nil, false})
-		links = &f.params[len(f.params)-1]
-	}
-	return links
-}
-
-func (f *Frame) AddLink(param_name string, target *Frame) *Link {
-	frame_parameter := f.ForceGetLinkSet(param_name)
-	frame_parameter.Target = target
-	return &Link{f, frame_parameter}
-}
-
-func (l *Link) SetTarget(target *Frame) {
-	l.param.Target = target
-}
-
-func (l *Link) B() *Frame {
-	return l.param.Target
 }

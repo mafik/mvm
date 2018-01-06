@@ -1,4 +1,4 @@
-package mvm
+package ui
 
 import (
 	"bytes"
@@ -6,22 +6,21 @@ import (
 	"math"
 	"strings"
 
-	. "github.com/mafik/mvm/vec2"
+	"github.com/mafik/mvm/matrix"
+	"github.com/mafik/mvm/vec2"
 )
-
-var margin float64 = 5
-var buttonWidth float64 = 100
-var buttonHeight float64 = textSize + margin*2
-var textMargin float64 = margin * 1.75
-var textSize float64 = 20
 
 type TextMeasurer interface {
 	MeasureText(text string) float64
 }
 
 type Context2D struct {
-	client Client
-	buffer bytes.Buffer
+	textMeasurer TextMeasurer
+	buffer       bytes.Buffer
+}
+
+func MakeContext2D(m TextMeasurer) Context2D {
+	return Context2D{m, bytes.Buffer{}}
 }
 
 func (ctx *Context2D) sep() {
@@ -48,15 +47,14 @@ func (ctx *Context2D) MeasureText(text string) float64 {
 	if width, ok := measureTextCache[text]; ok {
 		return width
 	}
-	request := fmt.Sprintf("[\"measureText\",%q]", text)
-	result, err := ctx.client.Call(request)
-	if err != nil {
-		panic("Bad result of MeasureText: " + result.Type)
-	}
-	measureTextCache[text] = result.Width
-	return result.Width
+	result := ctx.textMeasurer.MeasureText(text)
+	measureTextCache[text] = result
+	return result
 }
 
+func (ctx *Context2D) Transform(m matrix.Matrix) {
+	ctx.add(fmt.Sprintf("[\"transform\",%g,%g,%g,%g,%g,%g]", m[0], m[1], m[2], m[3], m[4], m[5]))
+}
 func (ctx *Context2D) Translate(x, y float64) {
 	ctx.add(fmt.Sprintf("[\"translate\",%g,%g]", x, y))
 }
@@ -125,23 +123,23 @@ func (ctx *Context2D) Clip()      { ctx.add("[\"clip\"]") }
 
 // Utility functions
 
-func (ctx *Context2D) Translate2(pos Vec2) {
+func (ctx *Context2D) Translate2(pos vec2.Vec2) {
 	ctx.Translate(pos.X, pos.Y)
 }
 
-func (ctx *Context2D) Rect2(pos, size Vec2) {
-	ctx.Rect(pos.X-size.X/2, pos.Y-size.Y/2, size.X, size.Y)
+func (ctx *Context2D) Rect2(box Box) {
+	ctx.Rect(box.Left, box.Top, box.Width(), box.Height())
 }
 
-func (ctx *Context2D) MoveTo2(pos Vec2) {
+func (ctx *Context2D) MoveTo2(pos vec2.Vec2) {
 	ctx.MoveTo(pos.X, pos.Y)
 }
 
-func (ctx *Context2D) LineTo2(pos Vec2) {
+func (ctx *Context2D) LineTo2(pos vec2.Vec2) {
 	ctx.LineTo(pos.X, pos.Y)
 }
 
-func (ctx *Context2D) Circle(pos Vec2, radius float64) {
+func (ctx *Context2D) Circle(pos vec2.Vec2, radius float64) {
 	ctx.Arc(pos.X, pos.Y, radius, 0, 2*math.Pi, false)
 }
 
@@ -186,130 +184,4 @@ func (ctx *Context2D) Hourglass(color string) {
 	ctx.ClosePath()
 	ctx.FillStyle(color)
 	ctx.Fill()
-}
-
-type ButtonList struct {
-	Ctx                                        *Context2D
-	Next                                       Vec2
-	ActiveBg, ActiveFg, InactiveBg, InactiveFg string
-	Dir                                        int
-}
-
-func (ctx *Context2D) NewButtonList(dir int) *ButtonList {
-	return &ButtonList{ctx, Vec2{0, 0}, "#888", "#fff", "#ccc", "#000", dir}
-}
-
-func (l *ButtonList) PositionAt(pos Vec2) *ButtonList {
-	l.Next = pos
-	return l
-}
-
-func (l *ButtonList) Colors(activeBg, activeFg, inactiveBg, inactiveFg string) *ButtonList {
-	l.ActiveBg = activeBg
-	l.ActiveFg = activeFg
-	l.InactiveBg = inactiveBg
-	l.InactiveFg = inactiveFg
-	return l
-}
-
-func (l *ButtonList) AlignLeft(left float64) *ButtonList {
-	l.Next.X = left + margin + buttonWidth/2
-	return l
-}
-
-func (l *ButtonList) AlignTop(top float64) *ButtonList {
-	l.Next.Y = top + margin + buttonHeight/2
-	return l
-}
-
-func (l *ButtonList) AlignBottom(bottom float64) *ButtonList {
-	l.Next.Y = bottom - margin - buttonHeight/2
-	return l
-}
-
-func (l *ButtonList) Add(text string, active bool) *ButtonList {
-	fg, bg := l.InactiveFg, l.InactiveBg
-	if active {
-		fg, bg = l.ActiveFg, l.ActiveBg
-	}
-	l.Ctx.BeginPath()
-	l.Ctx.Rect(l.Next.X-buttonWidth/2, l.Next.Y-buttonHeight/2, buttonWidth, buttonHeight)
-	l.Ctx.FillStyle(bg)
-	l.Ctx.Fill()
-	l.Ctx.FillStyle(fg)
-	l.Ctx.TextAlign("center")
-	l.Ctx.FillText(text, l.Next.X, l.Next.Y+5)
-	l.Next.Y += (buttonHeight + margin) * float64(l.Dir)
-	return l
-}
-
-type Drawable interface {
-	Draw(ctx *Context2D)
-}
-
-func DrawEditingOverlay(ctx *Context2D) {
-	ctx.LineWidth(2)
-	ctx.StrokeStyle("#f00")
-	ctx.Stroke()
-	ctx.FillStyle("rgba(255,128,128,0.2)")
-	ctx.Fill()
-}
-
-func (layer OverlayLayer) Draw(ctx *Context2D) {
-	ctx.Save()
-	ctx.Translate(margin, margin)
-	for it := layer.o; it != nil; it = it.parent {
-		text := "#bbb"
-		bg := "#444"
-		if it == layer.o {
-			text = "#fff"
-			bg = "#000"
-		}
-		ctx.FillStyle(bg)
-		ctx.BeginPath()
-		ctx.Rect(0, 0, buttonWidth, buttonHeight)
-		ctx.Fill()
-		if ctx.client.Editing(it.typ) {
-			DrawEditingOverlay(ctx)
-		}
-		ctx.FillStyle(text)
-		ctx.FillText(it.typ.Name(), buttonWidth/2, buttonHeight-textMargin)
-		ctx.Translate(0, margin+buttonHeight)
-	}
-	ctx.Restore()
-	return
-}
-
-func (ctx *Context2D) TransformToGlobal(w *Window) {
-	ctx.Translate2(Scale(w.size, 0.5))
-	ctx.Scale(w.scale)
-	ctx.Translate2(Neg(w.center))
-}
-
-var shadowOffset = Vec2{margin, margin}
-
-func (layer BackgroundLayer) Draw(ctx *Context2D) {
-	ctx.Save()
-	ctx.FillStyle("#ddd")
-	ctx.BeginPath()
-	ctx.Rect(0, 0, window.size.X, window.size.Y)
-	ctx.Fill()
-	ctx.TransformToGlobal(&window)
-	for _, t := range Pointer.Touched {
-		if fd, ok := t.(*FrameDragging); ok {
-			f := fd.frame
-			ctx.FillStyle("#ccc")
-			ctx.BeginPath()
-			f.PropagateStiff(func(f *Frame) {
-				ctx.Rect2(Add(f.pos, shadowOffset), f.size)
-				for i, _ := range f.Parameters(layer.o) {
-					pos := Add(f.ParamCenter(i), shadowOffset)
-					ctx.Circle(pos, param_r)
-					ctx.ClosePath()
-				}
-			})
-			ctx.Fill()
-		}
-	}
-	ctx.Restore()
 }

@@ -1,116 +1,34 @@
 package mvm
 
 import (
-	"bytes"
 	"fmt"
 	"math"
 
-	. "github.com/mafik/mvm/vec2"
+	"github.com/mafik/mvm/ui"
+	"github.com/mafik/mvm/vec2"
 )
 
-type Window struct {
-	scale  float64
-	size   Vec2 // local units
-	center Vec2 // global units
-}
-
-func (w *Window) ToLocal(v Vec2) Vec2 {
-	return Add(Scale(Sub(v, w.center), w.scale), Scale(w.size, 0.5))
-}
-func (w *Window) ToGlobal(v Vec2) Vec2 {
-	return Add(w.center, Scale(Sub(v, Scale(w.size, 0.5)), 1/w.scale))
-}
-
-var window Window = Window{1, Vec2{0, 0}, Vec2{0, 0}}
 var nav bool
-
-type Layer interface {
-	Drawable
-	Input
-}
-
-// LayerList of touchable elements
-type LayerList []Layer
-type OverlayLayer struct{ o *Object }
-type TempLayer struct{ o *Object }
-type BackgroundLayer struct{ o *Object }
-
-func (layer TempLayer) Input(t *Touch, e Event) Touching {
-	return layer.o.typ.Input(layer.o, t, e)
-}
-
-func (layer TempLayer) Draw(ctx *Context2D) {
-	ctx.Save()
-	ctx.TransformToGlobal(&window)
-	layer.o.typ.Draw(layer.o, ctx)
-	ctx.Restore()
-}
-
-func GUI(c Client) LayerList {
-	//clip := c.Clipboard()
-	return []Layer{
-		OverlayLayer{TheVM.active},
-		TempLayer{TheVM.active},
-		BackgroundLayer{TheVM.active},
-	}
-}
 
 func ButtonSize(contentSize float64) float64 {
 	return math.Max(buttonHeight, contentSize+margin*2)
 }
 
-func (f *Frame) ContentLeft() float64   { return f.pos.X - f.ContentWidth()/2 }
-func (f *Frame) ContentTop() float64    { return f.pos.Y - f.ContentHeight()/2 }
-func (f *Frame) ContentBottom() float64 { return f.pos.Y + f.ContentHeight()/2 }
-func (f *Frame) ContentRight() float64  { return f.pos.X + f.ContentWidth()/2 }
-func (f *Frame) ContentWidth() float64  { return f.size.X }
-func (f *Frame) ContentHeight() float64 { return f.size.Y }
-
-func (f *Frame) TitleLeft() float64   { return f.ContentLeft() }
-func (f *Frame) TitleTop() float64    { return f.TitleBottom() - buttonHeight }
-func (f *Frame) TitleBottom() float64 { return f.ContentTop() }
-func (f *Frame) TitleRight(m TextMeasurer) float64 {
-	return f.TitleLeft() + f.TitleWidth(m)
-}
-func (f *Frame) TitleWidth(m TextMeasurer) float64 {
-	return ButtonSize(m.MeasureText(f.Title()))
-}
-func (f *Frame) TitleHeight() float64 { return buttonHeight }
-
-func (f *Frame) ObjectLeft(m TextMeasurer) float64 { return f.TitleRight(m) }
-func (f *Frame) ObjectTop() float64                { return f.TitleTop() }
-func (f *Frame) ObjectBottom() float64             { return f.TitleBottom() }
-func (f *Frame) ObjectRight(obj *Object, m TextMeasurer) float64 {
-	return f.ObjectLeft(m) + f.ObjectWidth(obj, m)
-}
-func (f *Frame) ObjectWidth(obj *Object, m TextMeasurer) float64 {
-	return ButtonSize(m.MeasureText(obj.typ.Name()))
-}
-func (f *Frame) ObjectHeight() float64 { return f.TitleHeight() }
-
-func (f *Frame) ParamCenter(i int) Vec2 {
-	return Vec2{
-		X: f.ContentLeft() + param_r,
-		Y: f.ContentBottom() + float64(i)*(param_r*2+margin) + margin + param_r,
-	}
-}
-
-func (frame *Frame) MarkForExecution() {
-	if frame == nil {
-		return
-	}
-	obj := frame.Object(TheVM.active)
-	obj.MarkForExecution()
-}
-
 var keep_running bool = true
 
 func ProcessEvent(e Event) {
-	//fmt.Printf("Processing event %s\n", e.Type)
+	clientUI := MakeClientUI(e.Client)
+
 	switch e.Type {
 	case "RenderReady":
-		defer func() { recover() }()
-		Update(e.Client)
+		ctx := ui.MakeContext2D(clientUI)
+		ui.Draw(clientUI, clientUI, &ctx)
+		up, _ := ctx.MarshalJSON()
+		up2 := string(up)
+		_, err := e.Client.Call(up2)
+		if err != nil {
+			fmt.Println(err)
+		}
 		return
 	}
 	switch e.Type {
@@ -123,66 +41,36 @@ func ProcessEvent(e Event) {
 			object.MarkForExecution()
 		}
 	case "Interrupt":
-		fmt.Println("Received SIGINT - saving the image and exiting")
-		err := SaveImage()
-		if err != nil {
-			fmt.Println(err)
-		}
-		keep_running = false
-		return
+		var ignore ui.TouchContext
+		Quit{}.Activate(ignore)
 	case "Size":
-		window.size = Vec2{float64(e.Width), float64(e.Height)}
+		clientUI.size = vec2.Vec2{float64(e.Width), float64(e.Height)}
 	case "MouseMove":
-		Pointer.Last = Pointer.TouchSnapshot
-		Pointer.Local = Vec2{e.X, e.Y}
-		Pointer.UpdateGlobal()
-		if nav {
-			window.center.Add(Pointer.Delta())
-		}
-		Pointer.UpdateGlobal()
-		for _, t := range Pointer.Touched {
-			t.Move(&Pointer)
-		}
+		Pointer.Move(clientUI, vec2.Vec2{e.X, e.Y})
 	case "MouseDown":
 	case "MouseUp":
 	case "KeyDown":
-		KeyDown(e)
+		Pointer.StartAction(clientUI, clientUI, e.Code, e.Key)
 	case "KeyUp":
-		KeyUp(e)
+		Pointer.EndAction(clientUI, e.Code)
 	case "Wheel":
-		a := Pointer.Global
-		window.scale *= math.Exp(-e.Y / 200)
-		Pointer.UpdateGlobal()
-		b := Pointer.Global
-		fix := Sub(a, b)
-		window.center.Add(fix)
-		Pointer.UpdateGlobal()
+		Pointer.Wheel = e.Y
+		Pointer.StartAction(clientUI, clientUI, "Wheel", "Wheel")
+		Pointer.EndAction(clientUI, "Wheel")
+		/*
+			focus := clientUI.focus
+			widget := focus.typ.MakeWidget(focus)
+			path := ui.TreePath{clientUI, widget}
+			transform := &focus.typ.(*Blueprint).transform
+			a := ui.ToLocal(clientUI, path, Pointer.Curr)
+			alpha := math.Exp(-e.Y / 200)
+			transform.Scale(alpha)
+			b := ui.ToLocal(clientUI, path, Pointer.Curr)
+			fix := vec2.Sub(b, a)
+			*transform = matrix.Multiply(matrix.Translate(fix), *transform) // apply translation before scaling
+		*/
 	default:
 		fmt.Printf("Unknown message: %s\n", e.Type)
-	}
-}
-
-var param_r float64 = 16.0
-
-func Update(client Client) {
-	ctx := Context2D{client, bytes.Buffer{}}
-	ll := GUI(client)
-	for i := len(ll) - 1; i >= 0; i-- {
-		ll[i].Draw(&ctx)
-	}
-
-	_, dragging := Pointer.Touched["Shift"]
-	ctx.NewButtonList(-1).
-		AlignLeft(0).
-		AlignBottom(window.size.Y).
-		Add("navigate", nav).
-		Add("drag", dragging)
-
-	up, _ := ctx.MarshalJSON()
-	up2 := string(up)
-	_, err := client.Call(up2)
-	if err != nil {
-		panic(err)
 	}
 }
 
@@ -203,7 +91,7 @@ func (ls *FrameParameter) FindParam(blueprint *Object) *Object {
 }
 
 func (f *Frame) FindParam(blueprint *Object, param string) *Object {
-	ls := f.GetLinkSet(param)
+	ls := f.FindFrameParameter(param)
 	if ls == nil {
 		return nil
 	}
@@ -245,12 +133,92 @@ type Event struct {
 	Client        Client
 }
 
-type Client interface {
-	Call(request string) (Event, error)
-	ToggleEditing(interface{})
-	Editing(interface{}) bool
-	Focus() *Object
+var Pointer = ui.MakeTouch()
+
+/*
+func LinkDist(p vec2.Vec2, link *Link) float64 {
+	start, end := link.StartPos(), link.EndPos()
+	l := Dist(start, end)
+	if l == 0 {
+		return Dist(p, start)
+	}
+	l = l * l
+	alpha := Clamp(0, 1, Dot(vec2.Sub(p, start), vec2.Sub(end, start))/l)
+	proj := vec2.Add(start, vec2.Scale(vec2.Sub(end, start), alpha))
+	return Dist(p, proj)
 }
+
+func PointedLink(b *Blueprint, v Vec2) (best *Link) {
+	best_dist := 8.0
+	for _, frame := range b.frames {
+		for i, _ := range frame.params {
+			frame_parameter := &frame.params[i]
+			if frame_parameter.Target == nil {
+				continue
+			}
+			link := &Link{frame, frame_parameter}
+			current_dist := LinkDist(v, link)
+			if current_dist < best_dist {
+				best, best_dist = link, current_dist
+			}
+		}
+	}
+	return
+}
+*/
+
+// Links & Params
+
+var LinkTargetType Type = &PrimitiveType{
+	name: "",
+	instantiate: func(me *Object) {
+		me.frame.size = vec2.Vec2{0, 0}
+	},
+}
+
+func (b *Blueprint) MakeLinkTarget() *Frame {
+	f := b.AddFrame()
+	f.Hidden = true
+	b.FillWithNew(f, LinkTargetType)
+	return f
+}
+
+var param_r float64 = 16
+var textSize float64 = 20
+var lineHeight float64 = 25
+var margin float64 = 5
+var buttonWidth float64 = 100
+var buttonHeight float64 = textSize + margin*2
+var textMargin float64 = margin * 1.75
+var shadowOffset = vec2.Vec2{margin, margin}
+
+/*
+func DrawBreadcrumb(bp *Object, ctx *Context2D) {
+	ctx.Save()
+	ctx.Translate(margin, margin)
+	ctx.TextAlign("center")
+	for it := bp; it != nil; it = it.parent {
+		text := "#bbb"
+		bg := "#444"
+		if it == bp {
+			text = "#fff"
+			bg = "#000"
+		}
+		ctx.FillStyle(bg)
+		ctx.BeginPath()
+		ctx.Rect(0, 0, buttonWidth, buttonHeight)
+		ctx.Fill()
+		if ctx.client.Editing(it.typ) {
+			DrawEditingOverlay(ctx)
+		}
+		ctx.FillStyle(text)
+		ctx.FillText(it.typ.Name(), buttonWidth/2, buttonHeight-textMargin)
+		ctx.Translate(0, margin+buttonHeight)
+	}
+	ctx.Restore()
+	return
+}
+*/
 
 /*
 P0
@@ -266,11 +234,21 @@ P2
 - Highlighting frames with the right type
 
 TODO:
-- frame pinning
-- menu system
+- frame can be toggled as a blueprint parameter (DONE)
+- frame parameters can be added (DONE)
+- frame parameters can be deleted (DONE)
+- frame parameters can be renamed (DONE)
+- all types of frames can be moved into inner blueprint
+
+LATER:
+- blueprints have random backgrounds
+
+Note: Manipulation
+- Users shouldn't be able to manipulate objects directly - it can't be automated
+- Instead the user should be functions that perform operations on objects
 
 Note: Input events
-- Events are delivered to GUI elements in reverse-draw order
+- Events are delivered to widgets in reverse-draw order
 - Keyboard events activate quick actions by default
 - Objects can be placed into edit mode with the "Tab" key
 -
