@@ -90,7 +90,7 @@ type FrameTitle struct {
 
 func (f FrameTitle) Draw(ctx *ui.Context2D) {
 	box := f.Size(ctx)
-	ctx.FillStyle("#000")
+	ctx.FillStyle(f.Frame.blueprint.DarkColor())
 	ctx.BeginPath()
 	ctx.Rect2(box)
 	ctx.Fill()
@@ -134,7 +134,6 @@ func (Raise) Name() string    { return "Raise" }
 func (Raise) Keycode() string { return "KeyG" }
 func (r Raise) Activate(ctx ui.TouchContext) ui.Action {
 	var newB *Blueprint
-	var newO *Object
 	var newPos vec2.Vec2
 	f := r.Frame
 	oldB := f.blueprint
@@ -146,7 +145,6 @@ func (r Raise) Activate(ctx ui.TouchContext) ui.Action {
 		}
 		if bw.Blueprint != oldB {
 			newB = bw.Blueprint
-			newO = bw.Object
 			newPos = pos
 			return ui.Explore
 		}
@@ -446,10 +444,24 @@ func StartFrameDragging(p vec2.Vec2, f *Frame) FrameDragging {
 	}
 	return FrameDragging{f, cell}
 }
-func (d FrameDragging) Name() string                       { return "Move" }
-func (d FrameDragging) Keycode() string                    { return "KeyF" }
-func (d FrameDragging) Activate(ui.TouchContext) ui.Action { return d }
-func (d FrameDragging) End(ui.TouchContext)                {}
+func (d FrameDragging) Name() string    { return "Move" }
+func (d FrameDragging) Keycode() string { return "KeyF" }
+func (d FrameDragging) Activate(ui.TouchContext) ui.Action {
+	b := d.Frame.blueprint
+	X := 0
+	for i, frame := range b.frames {
+		if frame == d.Frame {
+			X = i
+			break
+		}
+	}
+	l := len(b.frames)
+	if X < l {
+		b.frames[X], b.frames[l-1] = b.frames[l-1], b.frames[X]
+	}
+	return d
+}
+func (d FrameDragging) End(ui.TouchContext) {}
 func (d FrameDragging) Move(ctx ui.TouchContext) ui.Action {
 	delta := ctx.Delta()
 	e, cell := d.Frame, d.Cell
@@ -658,7 +670,7 @@ func (fp FramePayload) Draw(ctx *ui.Context2D) {
 	ctx.BeginPath()
 	ctx.Rect2(box)
 	ctx.Fill()
-	ctx.FillStyle("#000")
+	ctx.FillStyle(fp.frame.blueprint.DarkColor())
 	ctx.FillText(fp.object.typ.Name(), box.Left+margin, box.Bottom-textMargin)
 }
 func (fp FramePayload) Size(m ui.TextMeasurer) ui.Box {
@@ -700,7 +712,7 @@ func (ft FrameTile) PostDraw(ctx *ui.Context2D) {
 	ctx.BeginPath()
 	ctx.Rect2(ft.Size(ctx).Grow(-1))
 	ctx.LineWidth(2)
-	ctx.StrokeStyle("#000")
+	ctx.StrokeStyle(ft.Frame.blueprint.DarkColor())
 	ctx.Stroke()
 }
 func (ft FrameTile) Transform(ui.TextMeasurer) matrix.Matrix {

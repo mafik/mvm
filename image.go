@@ -8,8 +8,8 @@ import (
 
 func SetupDefault() {
 	welcome := MakeBlueprint("root")
-	TheVM.active = MakeObject(welcome, nil, nil)
-	welcome.Instantiate(TheVM.active)
+	TheVM.root = MakeObject(welcome, nil, nil)
+	welcome.Instantiate(TheVM.root)
 
 	var x float64
 	for _, t := range Types {

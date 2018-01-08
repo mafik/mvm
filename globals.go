@@ -19,7 +19,7 @@ func (p *FixedParameter) Name() string {
 	return p.name
 }
 
-func (p *FixedParameter) Typ() Type {
+func (p *FixedParameter) Type() Type {
 	return p.typ
 }
 

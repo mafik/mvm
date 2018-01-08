@@ -68,8 +68,8 @@ func setupTest() (tc TestCase) {
 		up: make(chan string, 1000),
 	}
 	tc.Resize(1000, 1000)
-	TheVM.active = MakeObject(tc.bp, nil, nil)
-	tc.bp.Instantiate(TheVM.active)
+	TheVM.root = MakeObject(tc.bp, nil, nil)
+	tc.bp.Instantiate(TheVM.root)
 	return
 }
 

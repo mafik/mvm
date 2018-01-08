@@ -115,14 +115,14 @@ type VMGob struct {
 }
 
 func (vm *VM) Gob(s Serializer) Gob {
-	return VMGob{ActiveIndex: s.Id(vm.active)}
+	return VMGob{ActiveIndex: s.Id(vm.root)}
 }
 
 func (gob VMGob) Ungob() Gobbable { return &VM{} }
 
 func (vm *VM) Connect(d Deserializer, gob Gob) {
 	vmGob := gob.(VMGob)
-	vm.active = d.Get(vmGob.ActiveIndex).(*Object)
+	vm.root = d.Get(vmGob.ActiveIndex).(*Object)
 }
 
 type BlueprintGob struct {
@@ -130,10 +130,11 @@ type BlueprintGob struct {
 	Frames    []int
 	Instances []int
 	Transform matrix.Matrix
+	Color     int
 }
 
 func (blue *Blueprint) Gob(s Serializer) Gob {
-	gob := BlueprintGob{Name: blue.name, Transform: blue.transform}
+	gob := BlueprintGob{Name: blue.name, Transform: blue.transform, Color: blue.color}
 	for _, frame := range blue.frames {
 		gob.Frames = append(gob.Frames, s.Id(frame))
 	}
@@ -149,6 +150,7 @@ func (gob BlueprintGob) Ungob() Gobbable {
 		frames:    nil,
 		instances: make(map[*Object]bool),
 		transform: gob.Transform,
+		color:     gob.Color,
 	}
 }
 

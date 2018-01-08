@@ -25,7 +25,7 @@ func MakeClientUI(c Client) *ClientUI {
 	if ui, ok := clients[c]; ok {
 		return ui
 	}
-	ui := ClientUI{c, make(map[ui.Editable]bool), TheVM.active, vec2.Vec2{0, 0}}
+	ui := ClientUI{c, make(map[ui.Editable]bool), TheVM.root, vec2.Vec2{0, 0}}
 	clients[c] = &ui
 	return &ui
 }
