@@ -170,14 +170,16 @@ type FrameGob struct {
 	Pos       Vec2
 	Size      Vec2
 	Name      string
-	Params    []FrameParameterGob
+	Elems     []FrameElementGob
 	Param     bool
+	Public    bool
 }
 
-type FrameParameterGob struct {
-	Name   string
-	Target int
-	Stiff  bool
+type FrameElementGob struct {
+	Name       string
+	Target     int
+	TargetName string
+	Stiff      bool
 }
 
 func (frame *Frame) Gob(s Serializer) Gob {
@@ -186,29 +188,30 @@ func (frame *Frame) Gob(s Serializer) Gob {
 		Pos:       frame.pos,
 		Size:      frame.size,
 		Name:      frame.name,
-		Params:    nil,
+		Elems:     nil,
 		Param:     frame.param,
+		Public:    frame.public,
 	}
-	for _, frame_parameter := range frame.params {
+	for _, frame_element := range frame.elems {
 		id := 0
-		if frame_parameter.Target != nil {
-			id = s.Id(frame_parameter.Target)
+		if frame_element.Target != nil {
+			id = s.Id(frame_element.Target)
 		}
-		gob.Params = append(gob.Params, FrameParameterGob{frame_parameter.Name, id, frame_parameter.Stiff})
+		gob.Elems = append(gob.Elems, FrameElementGob{frame_element.Name, id, frame_element.TargetMember, frame_element.Stiff})
 	}
 	return gob
 }
 
 func (gob FrameGob) Ungob() Gobbable {
-	return &Frame{nil, gob.Pos, gob.Size, gob.Name, nil, gob.Param, false}
+	return &Frame{nil, gob.Pos, gob.Size, gob.Name, nil, gob.Param, gob.Public, false}
 }
 
 func (frame *Frame) Connect(d Deserializer, gob Gob) {
 	frameGob := gob.(FrameGob)
 	frame.blueprint = d.Get(frameGob.Blueprint).(*Blueprint)
-	for _, links_gob := range frameGob.Params {
+	for _, links_gob := range frameGob.Elems {
 		target, _ := d.Get(links_gob.Target).(*Frame)
-		frame.params = append(frame.params, FrameParameter{links_gob.Name, target, links_gob.Stiff})
+		frame.elems = append(frame.elems, FrameElement{links_gob.Name, target, links_gob.TargetName, links_gob.Stiff})
 	}
 }
 

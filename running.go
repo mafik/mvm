@@ -77,7 +77,7 @@ func ProcessEvent(e Event) {
 func MakeArgs(f *Frame, blueprint *Object) Args {
 	args := make(Args)
 	args["self"] = FindObject(f, blueprint)
-	for _, frame_parameter := range f.params {
+	for _, frame_parameter := range f.elems {
 		if frame_parameter.Target == nil {
 			continue
 		}
@@ -86,12 +86,12 @@ func MakeArgs(f *Frame, blueprint *Object) Args {
 	return args
 }
 
-func (ls *FrameParameter) FindParam(blueprint *Object) *Object {
+func (ls *FrameElement) FindParam(blueprint *Object) *Object {
 	return FindObject(ls.Target, blueprint)
 }
 
 func (f *Frame) FindParam(blueprint *Object, param string) *Object {
-	ls := f.FindFrameParameter(param)
+	ls := f.FindElement(param)
 	if ls == nil {
 		return nil
 	}
@@ -234,14 +234,10 @@ P2
 - Highlighting frames with the right type
 
 TODO:
-- frame can be toggled as a blueprint parameter (DONE)
-- frame parameters can be added (DONE)
-- frame parameters can be deleted (DONE)
-- frame parameters can be renamed (DONE)
-- all types of frames can be moved into inner blueprint
+- remove param flam - empty & public frames should automatically become blueprint parameters
+- fix parameter renaming
+- display number of blueprint instances
 
-LATER:
-- blueprints have random backgrounds
 
 Note: Manipulation
 - Users shouldn't be able to manipulate objects directly - it can't be automated
@@ -251,7 +247,6 @@ Note: Input events
 - Events are delivered to widgets in reverse-draw order
 - Keyboard events activate quick actions by default
 - Objects can be placed into edit mode with the "Tab" key
--
 
 Note: Keyboard
 - On small touchscreen, the key events are sent into the crosshair on the center on the screen

@@ -54,6 +54,24 @@ func (b *Blueprint) Parameters() (params []Parameter) {
 	return
 }
 
+func (b *Blueprint) Members() (members []string) {
+	for _, frame := range b.frames {
+		if frame.public {
+			members = append(members, frame.name)
+		}
+	}
+	return
+}
+
+func (b *Blueprint) GetMember(self *Object, name string) *Object {
+	for _, frame := range b.frames {
+		if frame.name == name {
+			return frame.Object(self)
+		}
+	}
+	return nil
+}
+
 func (b *Blueprint) Instantiate(o *Object) {
 	o.priv = &Machine{
 		objects: make(map[*Frame]*Object),
@@ -128,15 +146,30 @@ func (w BlueprintWidget) Draw(ctx *ui.Context2D) {
 func (w BlueprintWidget) PostDraw(ctx *ui.Context2D) {
 	b := w.Blueprint
 	for _, frame := range b.frames {
-		for i, _ := range frame.params {
-			frame_parameter := &frame.params[i]
+		for i, _ := range frame.elems {
+			frame_parameter := &frame.elems[i]
 			if frame_parameter.Target == nil {
 				continue
 			}
 			start := vec2.Add(frame.ParamCenter(i), frame.pos)
 			end := frame_parameter.Target.pos
+			if frame_parameter.TargetMember != "" {
+				targetElement := frame_parameter.Target.GetElement(frame_parameter.TargetMember)
+				targetI := 0
+				for i, elem := range frame_parameter.Target.elems {
+					if &elem == targetElement {
+						targetI = i
+						break
+					}
+				}
+				end = vec2.Add(end, frame_parameter.Target.ParamCenter(targetI))
+			}
 			delta := vec2.Sub(end, start)
 			length := vec2.Len(delta)
+
+			if frame_parameter.TargetMember != "" {
+				length -= param_r
+			}
 
 			ctx.Save()
 			ctx.Translate2(start)

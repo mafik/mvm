@@ -26,6 +26,14 @@ type TouchContext struct {
 	Path         TreePath
 }
 
+func (ctx TouchContext) At(check func(interface{}) bool) TouchContext {
+	for i := len(ctx.Path) - 1; i >= 0; i -= 1 {
+		if check(ctx.Path[i]) {
+			return TouchContext{ctx.textMeasurer, ctx.Touch, ctx.Path[:i+1]}
+		}
+	}
+	return TouchContext{ctx.textMeasurer, ctx.Touch, ctx.Path[:1]}
+}
 func (ctx TouchContext) AtTopBlueprint() TouchContext {
 	return TouchContext{ctx.textMeasurer, ctx.Touch, ctx.Path[:2]}
 }

@@ -41,6 +41,9 @@ func (t *PrimitiveType) Parameters() []Parameter {
 	return t.parameters
 }
 
+func (*PrimitiveType) Members() []string                 { return nil }
+func (*PrimitiveType) GetMember(*Object, string) *Object { return nil }
+
 func (t *PrimitiveType) Instantiate(o *Object) {
 	if t.instantiate != nil {
 		t.instantiate(o)
