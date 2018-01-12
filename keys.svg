@@ -28,7 +28,7 @@
      inkscape:cx="823.86819"
      inkscape:cy="555.04299"
      inkscape:document-units="px"
-     inkscape:current-layer="g3406"
+     inkscape:current-layer="g3154"
      showgrid="false"
      fit-margin-top="50"
      fit-margin-left="50"
@@ -649,7 +649,7 @@
              y="152.00151"
              x="-305.51962"
              id="tspan3418"
-             sodipodi:role="line">lower</tspan></text>
+             sodipodi:role="line">raise</tspan></text>
       </g>
       <g
          transform="translate(857.12657,138.32858)"
@@ -975,7 +975,7 @@
       <g
          id="g3532"
          transform="translate(779.78707,319.70756)"
-         style="opacity:0.5">
+         style="opacity:1">
         <path
            sodipodi:nodetypes="zszzzz"
            inkscape:connector-curvature="0"
@@ -1011,7 +1011,7 @@
              id="tspan3544"
              x="-305.51962"
              y="152.00151"
-             style="font-size:16px;line-height:1.25000000000000000">?</tspan></text>
+             style="font-size:16px;line-height:1.25">lower</tspan></text>
       </g>
       <g
          id="g3546"

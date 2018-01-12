@@ -211,7 +211,7 @@ func (frame *Frame) Connect(d Deserializer, gob Gob) {
 	frame.blueprint = d.Get(frameGob.Blueprint).(*Blueprint)
 	for _, links_gob := range frameGob.Elems {
 		target, _ := d.Get(links_gob.Target).(*Frame)
-		frame.elems = append(frame.elems, FrameElement{links_gob.Name, target, links_gob.TargetName, links_gob.Stiff})
+		frame.elems = append(frame.elems, &FrameElement{frame, links_gob.Name, TreeNode{target, links_gob.TargetName, links_gob.Stiff}})
 	}
 }
 

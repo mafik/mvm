@@ -104,17 +104,20 @@ func (f FrameTitle) SetText(s string) { f.Frame.name = s }
 func (f FrameTitle) MyFrame() *Frame  { return f.Frame }
 
 type FrameElementCircle struct {
-	Frame           *Frame
-	Index           int
-	Param           Parameter
-	IsMember        bool
-	Name            string
-	blueprintObject *Object
+	Frame    *Frame
+	Index    int
+	Param    Parameter
+	IsMember bool
+	Name     string
 }
 
 func (p FrameElementCircle) Draw(ctx *ui.Context2D) {
 	ctx.BeginPath()
-	ctx.Circle(vec2.Vec2{0, 0}, param_r)
+	if p.IsMember {
+		ctx.Rect2(ui.Box{-param_r, param_r, param_r, -param_r}.Grow(-1))
+	} else {
+		ctx.Circle(vec2.Vec2{0, 0}, param_r)
+	}
 	if p.Param != nil || p.IsMember {
 		ctx.FillStyle("#fff")
 		ctx.Fill()
@@ -124,16 +127,10 @@ func (p FrameElementCircle) Draw(ctx *ui.Context2D) {
 		ctx.StrokeStyle("#000")
 		ctx.Stroke()
 	}
-	if p.IsMember {
-		ctx.BeginPath()
-		ctx.Circle(vec2.Vec2{0, 0}, param_r-4)
-		ctx.FillStyle("#000")
-		ctx.Fill()
-	}
 }
 func (p FrameElementCircle) Options(pos vec2.Vec2) []ui.Option {
 	if !p.IsMember {
-		return []ui.Option{ParameterDragging{p.Frame, p.blueprintObject, p.Name}}
+		return []ui.Option{ParameterDragging{p.Frame, p.Name}}
 	}
 	return nil
 }
@@ -142,16 +139,15 @@ func (p FrameElementCircle) Size(ui.TextMeasurer) ui.Box {
 }
 
 type FrameElementWidget struct {
-	Frame           *Frame
-	Index           int
-	Param           Parameter
-	IsMember        bool
-	Name            string
-	blueprintObject *Object
+	Frame    *Frame
+	Index    int
+	Param    Parameter
+	IsMember bool
+	Name     string
 }
 
 func (p FrameElementWidget) Children() []interface{} {
-	return []interface{}{FrameElementCircle{p.Frame, p.Index, p.Param, p.IsMember, p.Name, p.blueprintObject}}
+	return []interface{}{FrameElementCircle{p.Frame, p.Index, p.Param, p.IsMember, p.Name}}
 }
 func (p FrameElementWidget) Draw(ctx *ui.Context2D) {
 	ctx.FillStyle("#000")
@@ -175,9 +171,8 @@ func (p FrameElementWidget) SetText(newName string) {
 }
 
 type FrameElementList struct {
-	Frame           *Frame
-	Object          *Object
-	blueprintObject *Object
+	Frame  *Frame
+	Object *Object
 }
 
 func (p FrameElementList) Draw(ctx *ui.Context2D) {
@@ -202,7 +197,7 @@ func (p FrameElementList) Children() (children []interface{}) {
 	if p.Object != nil {
 		objectParams = p.Object.typ.Parameters()
 	}
-	var objectMembers []string
+	var objectMembers []Member
 	if p.Object != nil {
 		objectMembers = p.Object.typ.Members()
 	}
@@ -211,12 +206,12 @@ func (p FrameElementList) Children() (children []interface{}) {
 		_, param := GetParam(objectParams, name)
 		isMember := false
 		for _, member := range objectMembers {
-			if member == name {
+			if member.Name() == name {
 				isMember = true
 				break
 			}
 		}
-		children = append(children, FrameElementWidget{p.Frame, len(children), param, isMember, name, p.blueprintObject})
+		children = append(children, FrameElementWidget{p.Frame, len(children), param, isMember, name})
 	}
 
 	if p.Object != nil {
@@ -226,14 +221,14 @@ func (p FrameElementList) Children() (children []interface{}) {
 			if existing != nil {
 				continue
 			}
-			children = append(children, FrameElementWidget{p.Frame, len(children), param, false, name, p.blueprintObject})
+			children = append(children, FrameElementWidget{p.Frame, len(children), param, false, name})
 		}
 		for _, member := range objectMembers {
-			existing := p.Frame.FindElement(member)
+			existing := p.Frame.FindElement(member.Name())
 			if existing != nil {
 				continue
 			}
-			children = append(children, FrameElementWidget{p.Frame, len(children), nil, true, member, p.blueprintObject})
+			children = append(children, FrameElementWidget{p.Frame, len(children), nil, true, member.Name()})
 
 		}
 	}
@@ -346,7 +341,7 @@ func (fobj FramedObject) Children() []interface{} {
 	}
 	widgets = append(widgets, FrameTile{fobj.Frame, fobj.Object})
 	widgets = append(widgets, FrameTitle{fobj.Frame, fobj.Object, fobj.BlueprintObject})
-	widgets = append(widgets, FrameElementList{fobj.Frame, fobj.Object, fobj.BlueprintObject})
+	widgets = append(widgets, FrameElementList{fobj.Frame, fobj.Object})
 	return widgets
 }
 

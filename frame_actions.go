@@ -68,6 +68,7 @@ func (r Raise) Activate(ctx ui.TouchContext) ui.Action {
 			}
 			delete(oldM.objects, f)
 			newM.objects[f] = o
+			o.parent = newO
 		}
 
 		return ui.Return
@@ -133,6 +134,7 @@ func (l Lower) Activate(ctx ui.TouchContext) ui.Action {
 					delete(oldM.objects, f)
 					newM := newO.priv.(*Machine)
 					newM.objects[f] = o
+					o.parent = newO
 
 				}
 				return ui.Return
@@ -303,7 +305,7 @@ type DeleteParameter struct {
 }
 
 func (DeleteParameter) Name() string    { return "Delete parameter" }
-func (DeleteParameter) Keycode() string { return "KeyZ" }
+func (DeleteParameter) Keycode() string { return "KeyQ" }
 func (dp DeleteParameter) Activate(ui.TouchContext) ui.Action {
 	dp.elems = append(dp.elems[:dp.ParameterIndex], dp.elems[dp.ParameterIndex+1:]...)
 	return nil
@@ -394,9 +396,8 @@ func IsBlueprintWidget(i interface{}) bool {
 }
 
 type ParameterDragging struct {
-	Frame           *Frame
-	blueprintObject *Object
-	ParamName       string
+	Frame     *Frame
+	ParamName string
 }
 
 func (d ParameterDragging) Param() *FrameElement {

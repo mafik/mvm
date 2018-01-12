@@ -54,10 +54,10 @@ func (b *Blueprint) Parameters() (params []Parameter) {
 	return
 }
 
-func (b *Blueprint) Members() (members []string) {
+func (b *Blueprint) Members() (members []Member) {
 	for _, frame := range b.frames {
 		if frame.public {
-			members = append(members, frame.name)
+			members = append(members, frame)
 		}
 	}
 	return
@@ -147,7 +147,7 @@ func (w BlueprintWidget) PostDraw(ctx *ui.Context2D) {
 	b := w.Blueprint
 	for _, frame := range b.frames {
 		for i, _ := range frame.elems {
-			frame_parameter := &frame.elems[i]
+			frame_parameter := frame.elems[i]
 			if frame_parameter.Target == nil {
 				continue
 			}
@@ -157,7 +157,7 @@ func (w BlueprintWidget) PostDraw(ctx *ui.Context2D) {
 				targetElement := frame_parameter.Target.GetElement(frame_parameter.TargetMember)
 				targetI := 0
 				for i, elem := range frame_parameter.Target.elems {
-					if &elem == targetElement {
+					if elem == targetElement {
 						targetI = i
 						break
 					}

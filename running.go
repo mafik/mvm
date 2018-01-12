@@ -234,9 +234,9 @@ P2
 - Highlighting frames with the right type
 
 TODO:
-- remove param flam - empty & public frames should automatically become blueprint parameters
 - fix parameter renaming
 - display number of blueprint instances
+- blueprint renaming
 
 
 Note: Manipulation

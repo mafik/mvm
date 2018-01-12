@@ -12,13 +12,16 @@ type Args map[string]*Object
 
 type Parameter interface {
 	Name() string
-	Type() Type
+}
+
+type Member interface {
+	Name() string
 }
 
 type Type interface {
 	Name() string
 	Parameters() []Parameter
-	Members() []string
+	Members() []Member
 	GetMember(*Object, string) *Object
 	Instantiate(*Object) // TODO: remove
 	Copy(from, to *Object)

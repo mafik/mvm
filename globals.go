@@ -12,15 +12,10 @@ import (
 
 type FixedParameter struct {
 	name string
-	typ  Type
 }
 
 func (p *FixedParameter) Name() string {
 	return p.name
-}
-
-func (p *FixedParameter) Type() Type {
-	return p.typ
 }
 
 type PrimitiveType struct {
@@ -41,7 +36,7 @@ func (t *PrimitiveType) Parameters() []Parameter {
 	return t.parameters
 }
 
-func (*PrimitiveType) Members() []string                 { return nil }
+func (*PrimitiveType) Members() []Member                 { return nil }
 func (*PrimitiveType) GetMember(*Object, string) *Object { return nil }
 
 func (t *PrimitiveType) Instantiate(o *Object) {
@@ -122,8 +117,8 @@ var FormatType Type = &PrimitiveType{
 		args["output"].priv = buf.Bytes()
 	},
 	parameters: []Parameter{
-		&FixedParameter{name: "output", typ: TextType},
-		&FixedParameter{name: "fmt", typ: TextType},
+		&FixedParameter{name: "output"},
+		&FixedParameter{name: "fmt"},
 		&FixedParameter{name: "args"},
 	},
 }
@@ -151,10 +146,10 @@ var ExecType Type = &PrimitiveType{
 		args["stdout"].priv = out
 	},
 	parameters: []Parameter{
-		&FixedParameter{name: "command", typ: TextType},
-		&FixedParameter{name: "args", typ: TextType},
-		&FixedParameter{name: "stdout", typ: TextType},
-		&FixedParameter{name: "stderr", typ: TextType},
+		&FixedParameter{name: "command"},
+		&FixedParameter{name: "args"},
+		&FixedParameter{name: "stdout"},
+		&FixedParameter{name: "stderr"},
 	},
 }
 
