@@ -93,6 +93,10 @@ type TextWidget struct {
 func (w TextWidget) Options(vec2.Vec2) []ui.Option { return nil }
 func (w TextWidget) Size(ui.TextMeasurer) ui.Box   { return w.o.frame.ContentSize().Grow(-2) }
 func (w TextWidget) Draw(ctx *ui.Context2D) {
+	ctx.BeginPath()
+	ctx.Rect2(w.o.frame.ContentSize())
+	ctx.FillStyle("#fff")
+	ctx.Fill()
 	text := w.o.typ.String(w.o.priv)
 	lines := strings.Split(text, "\n")
 	ctx.FillStyle("#000")

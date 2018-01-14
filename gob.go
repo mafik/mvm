@@ -167,24 +167,26 @@ func (blue *Blueprint) Connect(d Deserializer, gob Gob) {
 }
 
 type FrameGob struct {
-	Blueprint int
-	Pos       Vec2
-	Size      Vec2
-	Name      string
-	Elems     []int
-	Param     bool
-	Public    bool
+	Blueprint  int
+	Pos        Vec2
+	Size       Vec2
+	Name       string
+	Elems      []int
+	Param      bool
+	Public     bool
+	ShowWindow bool
 }
 
 func (frame *Frame) Gob(s Serializer) Gob {
 	gob := FrameGob{
-		Blueprint: s.Id(frame.blueprint),
-		Pos:       frame.pos,
-		Size:      frame.size,
-		Name:      frame.name,
-		Elems:     nil,
-		Param:     frame.param,
-		Public:    frame.public,
+		Blueprint:  s.Id(frame.blueprint),
+		Pos:        frame.pos,
+		Size:       frame.size,
+		Name:       frame.name,
+		Elems:      nil,
+		Param:      frame.param,
+		Public:     frame.public,
+		ShowWindow: frame.ShowWindow,
 	}
 	for _, frame_element := range frame.elems {
 		gob.Elems = append(gob.Elems, s.Id(frame_element))
@@ -193,7 +195,7 @@ func (frame *Frame) Gob(s Serializer) Gob {
 }
 
 func (gob FrameGob) Ungob() Gobbable {
-	return &Frame{nil, gob.Pos, gob.Size, gob.Name, nil, gob.Param, gob.Public, false}
+	return &Frame{nil, gob.Pos, gob.Size, gob.Name, nil, gob.Param, gob.Public, false, gob.ShowWindow}
 }
 
 func (frame *Frame) Connect(d Deserializer, gob Gob) {

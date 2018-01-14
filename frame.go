@@ -16,14 +16,15 @@ type TreeNode struct {
 }
 
 type Frame struct {
-	blueprint *Blueprint
-	pos       vec2.Vec2
-	size      vec2.Vec2
-	name      string
-	elems     []*FrameElement
-	param     bool
-	public    bool
-	Hidden    bool
+	blueprint  *Blueprint
+	pos        vec2.Vec2
+	size       vec2.Vec2
+	name       string
+	elems      []*FrameElement
+	param      bool
+	public     bool
+	Hidden     bool
+	ShowWindow bool
 }
 
 type FrameElement struct {

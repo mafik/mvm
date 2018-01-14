@@ -284,6 +284,19 @@ func (tp TogglePublic) Activate(ui.TouchContext) ui.Action {
 	return nil
 }
 
+// Toggle show window
+
+type ToggleShowWindow struct {
+	*Frame
+}
+
+func (ToggleShowWindow) Name() string    { return "Toggle window" }
+func (ToggleShowWindow) Keycode() string { return "KeyH" }
+func (tsw ToggleShowWindow) Activate(ui.TouchContext) ui.Action {
+	tsw.ShowWindow = !tsw.ShowWindow
+	return nil
+}
+
 // Add Parameter (frame / object parameter)
 
 type AddParameter struct {

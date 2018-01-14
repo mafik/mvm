@@ -44,9 +44,13 @@ func (f *Frame) PayloadWidth(obj *Object, m ui.TextMeasurer) float64 {
 func (f *Frame) PayloadHeight() float64 { return f.TitleHeight() }
 
 func (f *Frame) ParamCenter(i int) vec2.Vec2 {
+	y := 0.0
+	if f.ShowWindow {
+		y = f.size.Y
+	}
 	return vec2.Vec2{
 		X: f.ContentLeft() + param_r,
-		Y: f.ContentBottom() + float64(i)*(param_r*2+margin) + margin + param_r,
+		Y: y + float64(i)*(param_r*2+margin) + margin + param_r,
 	}
 }
 
@@ -84,6 +88,7 @@ func (f FrameTitle) Options(pos vec2.Vec2) []ui.Option {
 		CloneFrame{f.Frame, f.Object},
 		ToggleParameter{f.Frame},
 		TogglePublic{f.Frame},
+		ToggleShowWindow{f.Frame},
 		AddParameter{f.Frame},
 		Raise{f.Frame},
 		Lower{f.Frame, f.BlueprintObject},
@@ -190,7 +195,11 @@ func (p FrameElementList) Draw(ctx *ui.Context2D) {
 }
 func (p FrameElementList) Options(vec2.Vec2) []ui.Option { return nil }
 func (p FrameElementList) Transform(m ui.TextMeasurer) matrix.Matrix {
-	return matrix.Translate(vec2.Vec2{param_r, p.Frame.size.Y})
+	y := 0.
+	if p.Frame.ShowWindow {
+		y = p.Frame.size.Y
+	}
+	return matrix.Translate(vec2.Vec2{param_r, y})
 }
 func (p FrameElementList) Children() (children []interface{}) {
 	var objectParams []Parameter
@@ -270,14 +279,14 @@ type FrameBlueprintPayload struct {
 func (fbp FrameBlueprintPayload) GetText() string     { return fbp.Blueprint.name }
 func (fbp FrameBlueprintPayload) SetText(text string) { fbp.Blueprint.name = text }
 
-// FrameTile
+// FrameWindow
 
-type FrameTile struct {
+type FrameWindow struct {
 	Frame  *Frame
 	Object *Object
 }
 
-func (ft FrameTile) Children() []interface{} {
+func (ft FrameWindow) Children() []interface{} {
 	o := ft.Object
 	if o != nil {
 		w := o.typ.MakeWidget(o)
@@ -287,16 +296,16 @@ func (ft FrameTile) Children() []interface{} {
 	}
 	return nil
 }
-func (ft FrameTile) Size(m ui.TextMeasurer) ui.Box {
+func (ft FrameWindow) Size(m ui.TextMeasurer) ui.Box {
 	return ft.Frame.ContentSize()
 }
-func (ft FrameTile) Draw(ctx *ui.Context2D) {
+func (ft FrameWindow) Draw(ctx *ui.Context2D) {
 	ctx.BeginPath()
 	ctx.Rect2(ft.Size(ctx).Grow(-2))
 	ctx.Save()
 	ctx.Clip()
 }
-func (ft FrameTile) PostDraw(ctx *ui.Context2D) {
+func (ft FrameWindow) PostDraw(ctx *ui.Context2D) {
 	ctx.Restore()
 	ctx.BeginPath()
 	ctx.Rect2(ft.Size(ctx).Grow(-1))
@@ -304,10 +313,10 @@ func (ft FrameTile) PostDraw(ctx *ui.Context2D) {
 	ctx.StrokeStyle(ft.Frame.blueprint.DarkColor())
 	ctx.Stroke()
 }
-func (ft FrameTile) Transform(ui.TextMeasurer) matrix.Matrix {
+func (ft FrameWindow) Transform(ui.TextMeasurer) matrix.Matrix {
 	return matrix.Translate(vec2.Scale(ft.Frame.size, 0.5))
 }
-func (ft FrameTile) MyFrame() *Frame { return ft.Frame }
+func (ft FrameWindow) MyFrame() *Frame { return ft.Frame }
 
 // Frame Scaffolding
 
@@ -355,7 +364,9 @@ func (fobj FramedObject) Children() []interface{} {
 			widgets = append(widgets, FramePayload{fobj.Frame, fobj.Object})
 		}
 	}
-	widgets = append(widgets, FrameTile{fobj.Frame, fobj.Object})
+	if fobj.Frame.ShowWindow {
+		widgets = append(widgets, FrameWindow{fobj.Frame, fobj.Object})
+	}
 	widgets = append(widgets, FrameTitle{fobj.Frame, fobj.Object, fobj.BlueprintObject})
 	widgets = append(widgets, FrameElementList{fobj.Frame, fobj.Object})
 	return widgets
