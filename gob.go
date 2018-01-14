@@ -53,6 +53,7 @@ func RegisterGobs() {
 	gob.Register(BlueprintGob{})
 	gob.Register(MachineGob{})
 	gob.Register(FrameGob{})
+	gob.Register(ElementGob{})
 	gob.Register(ObjectGob{})
 }
 
@@ -170,16 +171,9 @@ type FrameGob struct {
 	Pos       Vec2
 	Size      Vec2
 	Name      string
-	Elems     []FrameElementGob
+	Elems     []int
 	Param     bool
 	Public    bool
-}
-
-type FrameElementGob struct {
-	Name       string
-	Target     int
-	TargetName string
-	Stiff      bool
 }
 
 func (frame *Frame) Gob(s Serializer) Gob {
@@ -193,11 +187,7 @@ func (frame *Frame) Gob(s Serializer) Gob {
 		Public:    frame.public,
 	}
 	for _, frame_element := range frame.elems {
-		id := 0
-		if frame_element.Target != nil {
-			id = s.Id(frame_element.Target)
-		}
-		gob.Elems = append(gob.Elems, FrameElementGob{frame_element.Name, id, frame_element.TargetMember, frame_element.Stiff})
+		gob.Elems = append(gob.Elems, s.Id(frame_element))
 	}
 	return gob
 }
@@ -209,10 +199,35 @@ func (gob FrameGob) Ungob() Gobbable {
 func (frame *Frame) Connect(d Deserializer, gob Gob) {
 	frameGob := gob.(FrameGob)
 	frame.blueprint = d.Get(frameGob.Blueprint).(*Blueprint)
-	for _, links_gob := range frameGob.Elems {
-		target, _ := d.Get(links_gob.Target).(*Frame)
-		frame.elems = append(frame.elems, &FrameElement{frame, links_gob.Name, TreeNode{target, links_gob.TargetName, links_gob.Stiff}})
+	for _, elemId := range frameGob.Elems {
+		frame.elems = append(frame.elems, d.Get(elemId).(*FrameElement))
 	}
+}
+
+type ElementGob struct {
+	Frame  int
+	Name   string
+	Target int
+	Stiff  bool
+}
+
+func (e *FrameElement) Gob(s Serializer) Gob {
+	return ElementGob{
+		Frame:  s.Id(e.frame),
+		Name:   e.Name,
+		Target: s.Id(e.Target),
+		Stiff:  e.Stiff,
+	}
+}
+
+func (gob ElementGob) Ungob() Gobbable {
+	return &FrameElement{TreeNode: TreeNode{nil, gob.Stiff}, frame: nil, Name: gob.Name}
+}
+
+func (e *FrameElement) Connect(d Deserializer, gob Gob) {
+	elementGob := gob.(ElementGob)
+	e.Target, _ = d.Get(elementGob.Target).(Target)
+	e.frame = d.Get(elementGob.Frame).(*Frame)
 }
 
 type MachineGob struct {

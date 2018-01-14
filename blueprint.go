@@ -152,24 +152,9 @@ func (w BlueprintWidget) PostDraw(ctx *ui.Context2D) {
 				continue
 			}
 			start := vec2.Add(frame.ParamCenter(i), frame.pos)
-			end := frame_parameter.Target.pos
-			if frame_parameter.TargetMember != "" {
-				targetElement := frame_parameter.Target.GetElement(frame_parameter.TargetMember)
-				targetI := 0
-				for i, elem := range frame_parameter.Target.elems {
-					if elem == targetElement {
-						targetI = i
-						break
-					}
-				}
-				end = vec2.Add(end, frame_parameter.Target.ParamCenter(targetI))
-			}
+			end := frame_parameter.Target.Position()
 			delta := vec2.Sub(end, start)
 			length := vec2.Len(delta)
-
-			if frame_parameter.TargetMember != "" {
-				length -= param_r
-			}
 
 			ctx.Save()
 			ctx.Translate2(start)

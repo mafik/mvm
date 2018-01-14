@@ -4,32 +4,16 @@ import (
 	"github.com/mafik/mvm/vec2"
 )
 
-/*
-type Plug interface {
-	GetObject(parent *Object) *Object
-}
-
-func (f *Frame) GetObject(parent *Object) *Object {
-	if f.public {
-		// try to find value in the blueprint above
-		return parent.frame.GetObject(parent.parent)
-	}
-	return f.findObjectHere(parent)
-}
-
-func (f *Frame) findObjectHere(paret *Object) *Object {
-}
-
-type ElementPlug struct {
-	TargetElement *FrameElement
+type Target interface {
+	Gobbable
+	Frame() *Frame
+	Position() vec2.Vec2
 }
 
 type TreeNode struct {
-	Outgoing Plug
-	Incoming []Plug
-	Stiff    bool
+	Target Target
+	Stiff  bool
 }
-*/
 
 type Frame struct {
 	blueprint *Blueprint
@@ -42,20 +26,19 @@ type Frame struct {
 	Hidden    bool
 }
 
-type TreeNode struct {
-	Target       *Frame
-	TargetMember string
-	Stiff        bool
-}
-
 type FrameElement struct {
-	Frame *Frame
-	Name  string
 	TreeNode
+	frame *Frame
+	Name  string
 }
 
+func (el *FrameElement) Frame() *Frame { return el.frame }
+func (el *FrameElement) Position() vec2.Vec2 {
+	v := el.frame.pos
+	return vec2.Add(v, el.frame.ParamCenter(el.Index()))
+}
 func (el *FrameElement) Index() int {
-	for i, other := range el.Frame.elems {
+	for i, other := range el.frame.elems {
 		if other == el {
 			return i
 		}
@@ -63,6 +46,8 @@ func (el *FrameElement) Index() int {
 	return -1
 }
 
+func (f *Frame) Frame() *Frame       { return f }
+func (f *Frame) Position() vec2.Vec2 { return f.pos }
 func (f *Frame) FindElement(name string) *FrameElement {
 	for i, elem := range f.elems {
 		if elem.Name == name {
@@ -75,7 +60,7 @@ func (f *Frame) FindElement(name string) *FrameElement {
 func (f *Frame) GetElement(name string) *FrameElement {
 	elem := f.FindElement(name)
 	if elem == nil {
-		f.elems = append(f.elems, &FrameElement{f, name, TreeNode{nil, "", false}})
+		f.elems = append(f.elems, &FrameElement{TreeNode{nil, false}, f, name})
 		elem = f.elems[len(f.elems)-1]
 	}
 	return elem
@@ -125,7 +110,7 @@ func (e *Frame) PropagateStiff(cb func(*Frame)) {
 		cb(f)
 		for _, param := range f.elems {
 			if param.Stiff && param.Target != nil {
-				q = append(q, param.Target)
+				q = append(q, param.Target.Frame())
 			}
 		}
 	}

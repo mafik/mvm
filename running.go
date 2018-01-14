@@ -87,7 +87,7 @@ func MakeArgs(f *Frame, blueprint *Object) Args {
 }
 
 func (ls *FrameElement) FindParam(blueprint *Object) *Object {
-	return FindObject(ls.Target, blueprint)
+	return FindObject(ls.Target.Frame(), blueprint)
 }
 
 func (f *Frame) FindParam(blueprint *Object, param string) *Object {
@@ -234,6 +234,7 @@ P2
 - Highlighting frames with the right type
 
 TODO:
+- delete FrameElement if it's not pointing anywhere
 - fix parameter renaming
 - display number of blueprint instances
 - blueprint renaming

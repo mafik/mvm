@@ -409,21 +409,19 @@ func (d ParameterDragging) Activate(t ui.TouchContext) ui.Action {
 	dummyTarget := d.Frame.blueprint.MakeLinkTarget()
 	dummyTarget.pos = t.At(IsBlueprintWidget).Position()
 	d.Param().Target = dummyTarget
-	d.Param().TargetMember = ""
 	return d
 }
 func (d ParameterDragging) Move(t ui.TouchContext) ui.Action {
-	d.Param().Target.pos.Add(t.Delta())
+	d.Param().Target.Frame().pos.Add(t.Delta())
 	return d
 }
 func (d ParameterDragging) End(ctx ui.TouchContext) {
-	dummy := d.Param().Target
+	dummy := d.Param().Target.Frame()
 	ctx.At(IsBlueprintWidget).Query(func(path ui.TreePath, p vec2.Vec2) ui.WalkAction {
 		elem := path[len(path)-1]
 		elementWidget, ok := elem.(FrameElementCircle)
 		if ok && elementWidget.IsMember {
-			d.Param().Target = elementWidget.Frame
-			d.Param().TargetMember = elementWidget.Name
+			d.Param().Target = elementWidget.Frame.GetElement(elementWidget.Name)
 		}
 		frameElement, ok := elem.(FramePart)
 		if ok {

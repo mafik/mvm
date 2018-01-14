@@ -262,6 +262,14 @@ func (fp FramePayload) Options(pos vec2.Vec2) []ui.Option {
 	return []ui.Option{FrameDragging{fp.frame, vec2.Vec2{0, 0}}, Enter{fp.object}}
 }
 
+type FrameBlueprintPayload struct {
+	FramePayload
+	Blueprint *Blueprint
+}
+
+func (fbp FrameBlueprintPayload) GetText() string     { return fbp.Blueprint.name }
+func (fbp FrameBlueprintPayload) SetText(text string) { fbp.Blueprint.name = text }
+
 // FrameTile
 
 type FrameTile struct {
@@ -337,7 +345,15 @@ func (fobj FramedObject) Options(p vec2.Vec2) []ui.Option {
 func (fobj FramedObject) Children() []interface{} {
 	widgets := make([]interface{}, 0, 5)
 	if fobj.Object != nil {
-		widgets = append(widgets, FramePayload{fobj.Frame, fobj.Object})
+		blueprint, ok := fobj.Object.typ.(*Blueprint)
+		if ok {
+			widgets = append(widgets, FrameBlueprintPayload{
+				FramePayload: FramePayload{fobj.Frame, fobj.Object},
+				Blueprint:    blueprint,
+			})
+		} else {
+			widgets = append(widgets, FramePayload{fobj.Frame, fobj.Object})
+		}
 	}
 	widgets = append(widgets, FrameTile{fobj.Frame, fobj.Object})
 	widgets = append(widgets, FrameTitle{fobj.Frame, fobj.Object, fobj.BlueprintObject})
