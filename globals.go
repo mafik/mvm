@@ -111,14 +111,28 @@ func (w TextWidget) Draw(ctx *ui.Context2D) {
 func (w TextWidget) GetText() string  { return string(w.o.priv.([]byte)) }
 func (w TextWidget) SetText(s string) { w.o.priv = []byte(s) }
 
+var CopyType Type = &PrimitiveType{
+	name: "copy",
+	run: func(args Args) {
+		from := args.Get("from")
+		to := &Object{nil, nil, false, false, from.typ, nil}
+		from.typ.Copy(from, to)
+		args.Set("to", to)
+	},
+	parameters: []Parameter{
+		&FixedParameter{name: "from"},
+		&FixedParameter{name: "to"},
+	},
+}
+
 var FormatType Type = &PrimitiveType{
 	name: "format",
 	run: func(args Args) {
-		format := string(args["fmt"].priv.([]byte))
-		fmt_args := []interface{}{args["args"].priv}
+		format := string(args.Get("fmt").priv.([]byte))
+		fmt_args := []interface{}{args.Get("args").priv}
 		var buf bytes.Buffer
 		fmt.Fprintf(&buf, format, fmt_args...)
-		args["output"].priv = buf.Bytes()
+		args.Get("output").priv = buf.Bytes()
 	},
 	parameters: []Parameter{
 		&FixedParameter{name: "output"},
@@ -130,24 +144,24 @@ var FormatType Type = &PrimitiveType{
 var ExecType Type = &PrimitiveType{
 	name: "exec",
 	run: func(args Args) {
-		name := TextType.String(args["command"].priv)
+		name := TextType.String(args.Get("command").priv)
 		cmd_args := []string{}
-		if args["args"] != nil {
-			cmd_args = append(cmd_args, TextType.String(args["args"].priv))
+		if args.Get("args") != nil {
+			cmd_args = append(cmd_args, TextType.String(args.Get("args").priv))
 		}
 		out, err := exec.Command(name, cmd_args...).Output()
 		if err != nil {
-			if args["stderr"] != nil {
+			if args.Get("stderr") != nil {
 				switch err := err.(type) {
 				case *exec.ExitError:
-					args["stderr"].priv = err.Stderr
+					args.Get("stderr").priv = err.Stderr
 				case *exec.Error:
-					args["stderr"].priv = []byte(err.Error())
+					args.Get("stderr").priv = []byte(err.Error())
 				}
 			}
 			return
 		}
-		args["stdout"].priv = out
+		args.Get("stdout").priv = out
 	},
 	parameters: []Parameter{
 		&FixedParameter{name: "command"},
@@ -161,6 +175,7 @@ var Types map[string]Type = map[string]Type{
 	"format": FormatType,
 	"text":   TextType,
 	"exec":   ExecType,
+	"copy":   CopyType,
 }
 
 var TheVM *VM = &VM{}

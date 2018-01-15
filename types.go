@@ -8,7 +8,10 @@ type VM struct {
 	root *Object
 }
 
-type Args map[string]*Object
+type Args interface {
+	Get(string) *Object
+	Set(string, *Object)
+}
 
 type Parameter interface {
 	Name() string
@@ -34,6 +37,15 @@ func GetParam(params []Parameter, name string) (int, Parameter) {
 	for i, param := range params {
 		if param.Name() == name {
 			return i, param
+		}
+	}
+	return -1, nil
+}
+
+func GetMember(members []Member, name string) (int, Member) {
+	for i, member := range members {
+		if member.Name() == name {
+			return i, member
 		}
 	}
 	return -1, nil

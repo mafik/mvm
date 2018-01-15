@@ -108,71 +108,111 @@ func (f FrameTitle) GetText() string  { return f.Frame.name }
 func (f FrameTitle) SetText(s string) { f.Frame.name = s }
 func (f FrameTitle) MyFrame() *Frame  { return f.Frame }
 
+type FrameElementPointer struct {
+	Frame     *Frame
+	Index     int
+	Blueprint *Object
+}
+
+func (self FrameElementPointer) Zip() ElementPack {
+	machine := self.Blueprint.priv.(*Machine)
+	object := machine.objects[self.Frame]
+	return self.Frame.ZipElements(object)[self.Index]
+}
+func (self FrameElementPointer) Member() Member {
+	return self.Zip().Member
+}
+func (self FrameElementPointer) Param() Member {
+	return self.Zip().Param
+}
+func (self FrameElementPointer) PositionInFrame() vec2.Vec2 {
+	return vec2.Vec2{0, ParamOffset(self.Index)}
+}
+func (self FrameElementPointer) IsMember() bool {
+	return self.Member() != nil
+}
+func (self FrameElementPointer) IsDefined() bool {
+	return self.Member() != nil || self.Param() != nil
+}
+func (self FrameElementPointer) FrameElement() *FrameElement {
+	if self.Index < len(self.Frame.elems) {
+		return self.Frame.elems[self.Index]
+	}
+	return nil
+}
+func (self FrameElementPointer) MakeFrameElement() *FrameElement {
+	if el := self.FrameElement(); el != nil {
+		return el
+	}
+	return self.Frame.GetElement(self.Name())
+}
+func (self FrameElementPointer) Name() string {
+	pack := self.Zip()
+	if pack.FrameElement != nil {
+		return pack.FrameElement.Name
+	}
+	if pack.Member != nil {
+		return pack.Member.Name()
+	}
+	return pack.Param.Name()
+}
+
 type FrameElementCircle struct {
-	Frame    *Frame
-	Index    int
-	Param    Parameter
-	IsMember bool
-	Name     string
+	FrameElementPointer
 }
 
 func (p FrameElementCircle) Draw(ctx *ui.Context2D) {
 	ctx.BeginPath()
-	if p.IsMember {
+	if p.IsMember() {
 		ctx.Rect2(ui.Box{-param_r, param_r, param_r, -param_r}.Grow(-1))
 	} else {
 		ctx.Circle(vec2.Vec2{0, 0}, param_r)
 	}
-	if p.Param != nil || p.IsMember {
+	if p.IsDefined() {
 		ctx.FillStyle("#fff")
 		ctx.Fill()
 	}
-	if p.Index < len(p.Frame.elems) {
+	if p.FrameElement() != nil {
 		ctx.LineWidth(2)
 		ctx.StrokeStyle("#000")
 		ctx.Stroke()
 	}
 }
 func (p FrameElementCircle) Options(pos vec2.Vec2) []ui.Option {
-	if !p.IsMember {
-		return []ui.Option{ParameterDragging{p.Frame, p.Name}}
-	}
-	return nil
+	return []ui.Option{ParameterDragging{p.FrameElementPointer}}
 }
 func (p FrameElementCircle) Size(ui.TextMeasurer) ui.Box {
 	return ui.Box{-param_r, param_r, param_r, -param_r}
 }
 
 type FrameElementWidget struct {
-	Frame    *Frame
-	Index    int
-	Param    Parameter
-	IsMember bool
-	Name     string
+	FrameElementPointer
 }
 
 func (p FrameElementWidget) Children() []interface{} {
-	return []interface{}{FrameElementCircle{p.Frame, p.Index, p.Param, p.IsMember, p.Name}}
+	return []interface{}{FrameElementCircle{p.FrameElementPointer}}
 }
 func (p FrameElementWidget) Draw(ctx *ui.Context2D) {
 	ctx.FillStyle("#000")
-	ctx.FillText(p.Name, param_r+margin, -3)
+	ctx.FillText(p.GetText(), param_r+margin, -3)
 }
 func (p FrameElementWidget) Options(vec2.Vec2) (opts []ui.Option) {
-	if p.Index < len(p.Frame.elems) {
-		opts = append(opts, DeleteParameter{p.Frame, p.Index})
+	if el := p.FrameElement(); el != nil {
+		opts = append(opts, DeleteParameter{el})
 	}
 	return
 }
 func (p FrameElementWidget) Transform(ui.TextMeasurer) matrix.Matrix {
-	return matrix.Translate(vec2.Vec2{0, ParamOffset(p.Index)})
+	return matrix.Translate(p.PositionInFrame())
 }
 func (p FrameElementWidget) Size(measurer ui.TextMeasurer) ui.Box {
-	return ui.Box{-param_r, param_r + margin + measurer.MeasureText(p.Name), param_r, -param_r}.Grow(margin / 2)
+	return ui.Box{-param_r, param_r + margin + measurer.MeasureText(p.GetText()), param_r, -param_r}.Grow(margin / 2)
 }
-func (p FrameElementWidget) GetText() string { return p.Name }
+func (p FrameElementWidget) GetText() string {
+	return p.Name()
+}
 func (p FrameElementWidget) SetText(newName string) {
-	p.Frame.GetElement(p.Name).Name = newName
+	p.MakeFrameElement().Name = newName
 }
 
 type FrameElementList struct {
@@ -202,46 +242,10 @@ func (p FrameElementList) Transform(m ui.TextMeasurer) matrix.Matrix {
 	return matrix.Translate(vec2.Vec2{param_r, y})
 }
 func (p FrameElementList) Children() (children []interface{}) {
-	var objectParams []Parameter
-	if p.Object != nil {
-		objectParams = p.Object.typ.Parameters()
+	zip := p.Frame.ZipElements(p.Object)
+	for i, _ := range zip {
+		children = append(children, FrameElementWidget{FrameElementPointer{p.Frame, i, p.Object.parent}})
 	}
-	var objectMembers []Member
-	if p.Object != nil {
-		objectMembers = p.Object.typ.Members()
-	}
-	for i, _ := range p.Frame.elems {
-		name := p.Frame.elems[i].Name
-		_, param := GetParam(objectParams, name)
-		isMember := false
-		for _, member := range objectMembers {
-			if member.Name() == name {
-				isMember = true
-				break
-			}
-		}
-		children = append(children, FrameElementWidget{p.Frame, len(children), param, isMember, name})
-	}
-
-	if p.Object != nil {
-		for _, param := range objectParams {
-			name := param.Name()
-			existing := p.Frame.FindElement(name)
-			if existing != nil {
-				continue
-			}
-			children = append(children, FrameElementWidget{p.Frame, len(children), param, false, name})
-		}
-		for _, member := range objectMembers {
-			existing := p.Frame.FindElement(member.Name())
-			if existing != nil {
-				continue
-			}
-			children = append(children, FrameElementWidget{p.Frame, len(children), nil, true, member.Name()})
-
-		}
-	}
-
 	return children
 }
 

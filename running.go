@@ -36,7 +36,7 @@ func ProcessEvent(e Event) {
 	case "Finished":
 		o := e.Object
 		o.running = false
-		object := MakeArgs(o.frame, o.parent)["then"]
+		object := MakeArgs(o.frame, o.parent).Get("then")
 		if object != nil {
 			object.MarkForExecution()
 		}
@@ -74,16 +74,41 @@ func ProcessEvent(e Event) {
 	}
 }
 
-func MakeArgs(f *Frame, blueprint *Object) Args {
-	args := make(Args)
-	args["self"] = FindObject(f, blueprint)
-	for _, frame_parameter := range f.elems {
-		if frame_parameter.Target == nil {
-			continue
-		}
-		args[frame_parameter.Name] = frame_parameter.FindParam(blueprint)
+type FrameArgs struct {
+	Frame     *Frame
+	Blueprint *Object
+}
+
+func (args FrameArgs) Get(name string) *Object {
+	elem := args.Frame.FindElement(name)
+	if elem == nil {
+		return nil
 	}
-	return args
+	return elem.Target.Get(args.Blueprint)
+}
+
+func (args FrameArgs) Set(name string, obj *Object) {
+	elem := args.Frame.FindElement(name)
+	if elem == nil {
+		// TODO: create a new frame and store the result there OR alert the user
+		return
+	}
+	elem.Target.Set(args.Blueprint, obj)
+}
+
+func MakeArgs(f *Frame, blueprint *Object) Args {
+	return FrameArgs{f, blueprint}
+	/*
+		args := make(Args)
+		args["self"] = FindObject(f, blueprint)
+		for _, frame_parameter := range f.elems {
+			if frame_parameter.Target == nil {
+				continue
+			}
+			args[frame_parameter.Name] = frame_parameter.FindParam(blueprint)
+		}
+		return args
+	*/
 }
 
 func (ls *FrameElement) FindParam(blueprint *Object) *Object {

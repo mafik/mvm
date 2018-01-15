@@ -88,7 +88,7 @@ func (b *Blueprint) Copy(from, to *Object) {
 }
 
 func (b *Blueprint) Run(args Args) {
-	self := args["self"]
+	self := args.Get("self")
 	m := self.priv.(*Machine)
 	for frame, object := range m.objects {
 		if frame.name == "run" {

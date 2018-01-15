@@ -8,6 +8,8 @@ type Target interface {
 	Gobbable
 	Frame() *Frame
 	Position() vec2.Vec2
+	Get(blueprint *Object) *Object
+	Set(blueprint *Object, value *Object)
 }
 
 type TreeNode struct {
@@ -35,8 +37,19 @@ type FrameElement struct {
 
 func (el *FrameElement) Frame() *Frame { return el.frame }
 func (el *FrameElement) Position() vec2.Vec2 {
-	v := el.frame.pos
-	return vec2.Add(v, el.frame.ParamCenter(el.Index()))
+	return vec2.Add(el.frame.pos, el.PositionInFrame())
+}
+func (el *FrameElement) PositionInFrame() vec2.Vec2 {
+	return el.frame.ParamCenter(el.Index())
+}
+func (el *FrameElement) Get(blueprint *Object) *Object {
+	object := el.frame.Get(blueprint)
+	return object.typ.GetMember(object, el.Name)
+}
+func (el *FrameElement) Set(blueprint *Object, value *Object) {
+	//machine := blueprint.priv.(*Machine)
+	//object := machine.objects[el.frame]
+	// TODO: object.typ.SetMember(object, value)
 }
 func (el *FrameElement) Index() int {
 	for i, other := range el.frame.elems {
@@ -49,6 +62,53 @@ func (el *FrameElement) Index() int {
 
 func (f *Frame) Frame() *Frame       { return f }
 func (f *Frame) Position() vec2.Vec2 { return f.pos }
+func (f *Frame) Get(blueprint *Object) *Object {
+	machine := blueprint.priv.(*Machine)
+	return machine.objects[f]
+}
+func (f *Frame) Set(blueprint *Object, value *Object) {
+	value.parent = blueprint
+	value.frame = f
+	machine := blueprint.priv.(*Machine)
+	machine.objects[f] = value
+}
+
+type ElementPack struct {
+	FrameElement *FrameElement
+	Param        Parameter
+	Member       Member
+}
+
+func (f *Frame) ZipElements(o *Object) (zip []ElementPack) {
+	var params []Parameter
+	var members []Member
+	if o != nil {
+		members = o.typ.Members()
+		params = o.typ.Parameters()
+	}
+	for _, el := range f.elems {
+		i, param := GetParam(params, el.Name)
+		if i >= 0 {
+			last := len(params) - 1
+			params[i], params[last] = params[last], params[i]
+			params = params[:last]
+		}
+		i, member := GetMember(members, el.Name)
+		if i >= 0 {
+			last := len(members) - 1
+			members[i], members[last] = members[last], members[i]
+			members = members[:last]
+		}
+		zip = append(zip, ElementPack{el, param, member})
+	}
+	for _, param := range params {
+		zip = append(zip, ElementPack{nil, param, nil})
+	}
+	for _, member := range members {
+		zip = append(zip, ElementPack{nil, nil, member})
+	}
+	return
+}
 func (f *Frame) FindElement(name string) *FrameElement {
 	for i, elem := range f.elems {
 		if elem.Name == name {
