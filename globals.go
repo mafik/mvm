@@ -18,44 +18,44 @@ func (p *FixedParameter) Name() string {
 	return p.name
 }
 
-type PrimitiveType struct {
+type PrimitiveObject struct {
 	name        string
 	parameters  []Parameter
-	instantiate func(*Object)
-	copy        func(from, to *Object)
+	instantiate func(*Shell)
+	copy        func(from, to *Shell)
 	run         func(Args)
 	string      func(interface{}) string
-	makeWidget  func(*Object) ui.Widget
+	makeWidget  func(*Shell) ui.Widget
 }
 
-func (t *PrimitiveType) Name() string {
+func (t *PrimitiveObject) Name() string {
 	return t.name
 }
 
-func (t *PrimitiveType) Parameters() []Parameter {
+func (t *PrimitiveObject) Parameters() []Parameter {
 	return t.parameters
 }
 
-func (*PrimitiveType) Members() []Member                 { return nil }
-func (*PrimitiveType) GetMember(*Object, string) *Object { return nil }
+func (*PrimitiveObject) Members() []Member               { return nil }
+func (*PrimitiveObject) GetMember(*Shell, string) *Shell { return nil }
 
-func (t *PrimitiveType) Instantiate(o *Object) {
+func (t *PrimitiveObject) Instantiate(s *Shell) {
 	if t.instantiate != nil {
-		t.instantiate(o)
+		t.instantiate(s)
 	}
 }
 
-func (t *PrimitiveType) Copy(from, to *Object) {
+func (t *PrimitiveObject) Copy(from, to *Shell) {
 	if t.copy != nil {
 		t.copy(from, to)
 	}
 }
 
-func (t *PrimitiveType) Run(args Args) {
+func (t *PrimitiveObject) Run(args Args) {
 	t.run(args)
 }
 
-func (t *PrimitiveType) String(i interface{}) string {
+func (t *PrimitiveObject) String(i interface{}) string {
 	if t.string != nil {
 		return t.string(i)
 	} else {
@@ -63,41 +63,41 @@ func (t *PrimitiveType) String(i interface{}) string {
 	}
 }
 
-func (t *PrimitiveType) MakeWidget(o *Object) ui.Widget {
+func (t *PrimitiveObject) MakeWidget(s *Shell) ui.Widget {
 	if t.makeWidget != nil {
-		return t.makeWidget(o)
+		return t.makeWidget(s)
 	}
 	return nil
 }
 
-var TextType Type = &PrimitiveType{
+var TextObject Object = &PrimitiveObject{
 	name: "text",
-	instantiate: func(me *Object) {
+	instantiate: func(me *Shell) {
 		me.priv = []byte{}
 	},
-	copy: func(from, to *Object) {
+	copy: func(from, to *Shell) {
 		to.priv = append([]byte{}, from.priv.([]byte)...)
 	},
 	string: func(i interface{}) string {
 		return string(i.([]byte))
 	},
-	makeWidget: func(o *Object) ui.Widget {
-		return TextWidget{o}
+	makeWidget: func(s *Shell) ui.Widget {
+		return TextWidget{s}
 	},
 }
 
 type TextWidget struct {
-	o *Object
+	s *Shell
 }
 
 func (w TextWidget) Options(vec2.Vec2) []ui.Option { return nil }
-func (w TextWidget) Size(ui.TextMeasurer) ui.Box   { return w.o.frame.ContentSize().Grow(-2) }
+func (w TextWidget) Size(ui.TextMeasurer) ui.Box   { return w.s.frame.ContentSize().Grow(-2) }
 func (w TextWidget) Draw(ctx *ui.Context2D) {
 	ctx.BeginPath()
-	ctx.Rect2(w.o.frame.ContentSize())
+	ctx.Rect2(w.s.frame.ContentSize())
 	ctx.FillStyle("#fff")
 	ctx.Fill()
-	text := w.o.typ.String(w.o.priv)
+	text := w.s.object.String(w.s.priv)
 	lines := strings.Split(text, "\n")
 	ctx.FillStyle("#000")
 	ctx.TextAlign("center")
@@ -108,15 +108,15 @@ func (w TextWidget) Draw(ctx *ui.Context2D) {
 	width := ctx.MeasureText(lines[len(lines)-1])
 	ctx.FillRect(width/2, h/2, 2, -lineHeight)
 }
-func (w TextWidget) GetText() string  { return string(w.o.priv.([]byte)) }
-func (w TextWidget) SetText(s string) { w.o.priv = []byte(s) }
+func (w TextWidget) GetText() string  { return string(w.s.priv.([]byte)) }
+func (w TextWidget) SetText(s string) { w.s.priv = []byte(s) }
 
-var CopyType Type = &PrimitiveType{
+var CopyObject Object = &PrimitiveObject{
 	name: "copy",
 	run: func(args Args) {
 		from := args.Get("from")
-		to := &Object{nil, nil, false, false, from.typ, nil}
-		from.typ.Copy(from, to)
+		to := &Shell{nil, nil, false, false, from.object, nil}
+		from.object.Copy(from, to)
 		args.Set("to", to)
 	},
 	parameters: []Parameter{
@@ -125,7 +125,7 @@ var CopyType Type = &PrimitiveType{
 	},
 }
 
-var FormatType Type = &PrimitiveType{
+var FormatObject Object = &PrimitiveObject{
 	name: "format",
 	run: func(args Args) {
 		format := string(args.Get("fmt").priv.([]byte))
@@ -141,13 +141,13 @@ var FormatType Type = &PrimitiveType{
 	},
 }
 
-var ExecType Type = &PrimitiveType{
+var ExecObject Object = &PrimitiveObject{
 	name: "exec",
 	run: func(args Args) {
-		name := TextType.String(args.Get("command").priv)
+		name := TextObject.String(args.Get("command").priv)
 		cmd_args := []string{}
 		if args.Get("args") != nil {
-			cmd_args = append(cmd_args, TextType.String(args.Get("args").priv))
+			cmd_args = append(cmd_args, TextObject.String(args.Get("args").priv))
 		}
 		out, err := exec.Command(name, cmd_args...).Output()
 		if err != nil {
@@ -171,11 +171,11 @@ var ExecType Type = &PrimitiveType{
 	},
 }
 
-var Types map[string]Type = map[string]Type{
-	"format": FormatType,
-	"text":   TextType,
-	"exec":   ExecType,
-	"copy":   CopyType,
+var Objects map[string]Object = map[string]Object{
+	"format": FormatObject,
+	"text":   TextObject,
+	"exec":   ExecObject,
+	"copy":   CopyObject,
 }
 
 var TheVM *VM = &VM{}

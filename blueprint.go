@@ -13,20 +13,20 @@ import (
 type Blueprint struct {
 	name      string
 	frames    []*Frame
-	instances map[*Object]bool
+	instances map[*Shell]bool
 	transform matrix.Matrix
 	color     int
 }
 
 type Machine struct {
-	objects map[*Frame]*Object
+	shells map[*Frame]*Shell
 }
 
 func MakeBlueprint(name string) *Blueprint {
 	return &Blueprint{
 		name:      name,
 		frames:    nil,
-		instances: make(map[*Object]bool),
+		instances: make(map[*Shell]bool),
 		transform: matrix.Identity(),
 		color:     rand.Intn(360),
 	}
@@ -63,36 +63,36 @@ func (b *Blueprint) Members() (members []Member) {
 	return
 }
 
-func (b *Blueprint) GetMember(self *Object, name string) *Object {
+func (b *Blueprint) GetMember(self *Shell, name string) *Shell {
 	for _, frame := range b.frames {
 		if frame.name == name {
-			return frame.Object(self)
+			return frame.Shell(self)
 		}
 	}
 	return nil
 }
 
-func (b *Blueprint) Instantiate(o *Object) {
-	o.priv = &Machine{
-		objects: make(map[*Frame]*Object),
+func (b *Blueprint) Instantiate(s *Shell) {
+	s.priv = &Machine{
+		shells: make(map[*Frame]*Shell),
 	}
-	b.instances[o] = true
+	b.instances[s] = true
 }
 
-func (b *Blueprint) Copy(from, to *Object) {
+func (b *Blueprint) Copy(from, to *Shell) {
 	b.Instantiate(to)
-	for frame, proto := range from.priv.(*Machine).objects {
-		new := MakeObject(proto.typ, frame, to)
-		proto.typ.Copy(proto, new)
+	for frame, proto := range from.priv.(*Machine).shells {
+		new := MakeShell(proto.object, frame, to)
+		proto.object.Copy(proto, new)
 	}
 }
 
 func (b *Blueprint) Run(args Args) {
 	self := args.Get("self")
 	m := self.priv.(*Machine)
-	for frame, object := range m.objects {
+	for frame, shell := range m.shells {
 		if frame.name == "run" {
-			object.MarkForExecution()
+			shell.MarkForExecution()
 			return
 		}
 	}
@@ -103,9 +103,9 @@ func (b *Blueprint) String(interface{}) string {
 	return fmt.Sprintf("%d frames", len(b.Frames()))
 }
 
-func (b *Blueprint) MakeWidget(o *Object) ui.Widget { return BlueprintWidget{b, o} }
-func (b *Blueprint) BrightColor() string            { return fmt.Sprintf("hsl(%d, 50%%, 85%%)", b.color) }
-func (b *Blueprint) DarkColor() string              { return fmt.Sprintf("hsl(%d, 60%%, 20%%)", b.color) }
+func (b *Blueprint) MakeWidget(s *Shell) ui.Widget { return BlueprintWidget{b, s} }
+func (b *Blueprint) BrightColor() string           { return fmt.Sprintf("hsl(%d, 50%%, 85%%)", b.color) }
+func (b *Blueprint) DarkColor() string             { return fmt.Sprintf("hsl(%d, 60%%, 20%%)", b.color) }
 
 func (bp *Blueprint) AddFrame() *Frame {
 	frame := &Frame{
@@ -117,23 +117,23 @@ func (bp *Blueprint) AddFrame() *Frame {
 	return frame
 }
 
-func (bp *Blueprint) FillWithNew(frame *Frame, typ Type) {
+func (bp *Blueprint) FillWithNew(frame *Frame, object Object) {
 	for instance, _ := range bp.instances {
-		o := MakeObject(typ, frame, instance)
-		typ.Instantiate(o)
+		s := MakeShell(object, frame, instance)
+		object.Instantiate(s)
 	}
 }
 
-func (bp *Blueprint) FillWithCopy(frame *Frame, proto *Object) {
+func (bp *Blueprint) FillWithCopy(frame *Frame, proto *Shell) {
 	for instance, _ := range bp.instances {
-		o := MakeObject(proto.typ, frame, instance)
-		proto.typ.Copy(proto, o)
+		s := MakeShell(proto.object, frame, instance)
+		proto.object.Copy(proto, s)
 	}
 }
 
 type BlueprintWidget struct {
 	Blueprint *Blueprint
-	Object    *Object
+	Shell     *Shell
 }
 
 func (w BlueprintWidget) Draw(ctx *ui.Context2D) {
@@ -216,31 +216,10 @@ func (w BlueprintWidget) Children() []interface{} {
 		if frame.Hidden {
 			continue
 		}
-		children = append(children, FramedObject{frame, frame.Object(w.Object), w.Object})
+		children = append(children, FrameWidget{frame, frame.Shell(w.Shell), w.Shell})
 	}
 	return children
 }
-
-/*
-func (b *Blueprint) Draw(o *Object, ctx *ui.Context2D) {
-	for _, t := range Pointer.Touched {
-		if fd, ok := t.(*FrameDragging); ok {
-			f := fd.frame
-			ctx.FillStyle("#ccc")
-			ctx.BeginPath()
-			f.PropagateStiff(func(f *Frame) {
-				ctx.Rect2(Add(f.pos, shadowOffset), f.size)
-				for i, _ := range f.Parameters(o) {
-					pos := Add(f.ParamCenter(i), shadowOffset)
-					ctx.Circle(pos, param_r)
-					ctx.ClosePath()
-				}
-			})
-			ctx.Fill()
-		}
-	}
-}
-*/
 
 type Navigate struct{ blueprint *Blueprint }
 

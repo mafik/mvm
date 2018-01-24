@@ -5,12 +5,12 @@ import (
 )
 
 type VM struct {
-	root *Object
+	root *Shell
 }
 
 type Args interface {
-	Get(string) *Object
-	Set(string, *Object)
+	Get(string) *Shell
+	Set(string, *Shell)
 }
 
 type Parameter interface {
@@ -21,16 +21,16 @@ type Member interface {
 	Name() string
 }
 
-type Type interface {
+type Object interface {
 	Name() string
 	Parameters() []Parameter
 	Members() []Member
-	GetMember(*Object, string) *Object
-	Instantiate(*Object) // TODO: remove
-	Copy(from, to *Object)
+	GetMember(*Shell, string) *Shell
+	Instantiate(*Shell) // TODO: remove
+	Copy(from, to *Shell)
 	Run(Args)
 	String(interface{}) string
-	MakeWidget(*Object) ui.Widget
+	MakeWidget(*Shell) ui.Widget
 }
 
 func GetParam(params []Parameter, name string) (int, Parameter) {

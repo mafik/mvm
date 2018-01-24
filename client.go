@@ -15,7 +15,7 @@ type Client interface {
 type ClientUI struct {
 	Client  Client
 	editing map[ui.Editable]bool
-	focus   *Object
+	focus   *Shell
 	size    vec2.Vec2
 }
 
@@ -43,7 +43,7 @@ func (c *ClientUI) IsEditing(i ui.Editable) bool {
 	return found
 }
 
-func (c *ClientUI) Focus() *Object {
+func (c *ClientUI) Focus() *Shell {
 	return c.focus
 }
 
@@ -87,7 +87,7 @@ func (c *ClientUI) Options(vec2.Vec2) []ui.Option {
 }
 
 func (c *ClientUI) Children() []interface{} {
-	return []interface{}{Background{c.size}, c.focus.typ.MakeWidget(c.focus)}
+	return []interface{}{Background{c.size}, c.focus.object.MakeWidget(c.focus)}
 }
 
 func (c *ClientUI) Transform(ui.TextMeasurer) matrix.Matrix {

@@ -8,11 +8,11 @@ import (
 
 func SetupDefault() {
 	welcome := MakeBlueprint("root")
-	TheVM.root = MakeObject(welcome, nil, nil)
+	TheVM.root = MakeShell(welcome, nil, nil)
 	welcome.Instantiate(TheVM.root)
 
 	var x float64
-	for _, t := range Types {
+	for _, t := range Objects {
 		f := welcome.AddFrame()
 		welcome.FillWithNew(f, t)
 		f.pos.X = x

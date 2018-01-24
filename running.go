@@ -34,11 +34,11 @@ func ProcessEvent(e Event) {
 	switch e.Type {
 	case "ContextMenu":
 	case "Finished":
-		o := e.Object
-		o.running = false
-		object := MakeArgs(o.frame, o.parent).Get("then")
-		if object != nil {
-			object.MarkForExecution()
+		s := e.Shell
+		s.running = false
+		then := MakeArgs(s.frame, s.parent).Get("then")
+		if then != nil {
+			then.MarkForExecution()
 		}
 	case "Interrupt":
 		var ignore ui.TouchContext
@@ -59,9 +59,9 @@ func ProcessEvent(e Event) {
 		Pointer.EndAction(clientUI, "Wheel")
 		/*
 			focus := clientUI.focus
-			widget := focus.typ.MakeWidget(focus)
+			widget := focus.object.MakeWidget(focus)
 			path := ui.TreePath{clientUI, widget}
-			transform := &focus.typ.(*Blueprint).transform
+			transform := &focus.object.(*Blueprint).transform
 			a := ui.ToLocal(clientUI, path, Pointer.Curr)
 			alpha := math.Exp(-e.Y / 200)
 			transform.Scale(alpha)
@@ -76,10 +76,10 @@ func ProcessEvent(e Event) {
 
 type FrameArgs struct {
 	Frame     *Frame
-	Blueprint *Object
+	Blueprint *Shell
 }
 
-func (args FrameArgs) Get(name string) *Object {
+func (args FrameArgs) Get(name string) *Shell {
 	elem := args.Frame.FindElement(name)
 	if elem == nil {
 		return nil
@@ -87,35 +87,24 @@ func (args FrameArgs) Get(name string) *Object {
 	return elem.Target.Get(args.Blueprint)
 }
 
-func (args FrameArgs) Set(name string, obj *Object) {
+func (args FrameArgs) Set(name string, s *Shell) {
 	elem := args.Frame.FindElement(name)
 	if elem == nil {
 		// TODO: create a new frame and store the result there OR alert the user
 		return
 	}
-	elem.Target.Set(args.Blueprint, obj)
+	elem.Target.Set(args.Blueprint, s)
 }
 
-func MakeArgs(f *Frame, blueprint *Object) Args {
+func MakeArgs(f *Frame, blueprint *Shell) Args {
 	return FrameArgs{f, blueprint}
-	/*
-		args := make(Args)
-		args["self"] = FindObject(f, blueprint)
-		for _, frame_parameter := range f.elems {
-			if frame_parameter.Target == nil {
-				continue
-			}
-			args[frame_parameter.Name] = frame_parameter.FindParam(blueprint)
-		}
-		return args
-	*/
 }
 
-func (ls *FrameElement) FindParam(blueprint *Object) *Object {
-	return FindObject(ls.Target.Frame(), blueprint)
+func (ls *FrameElement) FindParam(blueprint *Shell) *Shell {
+	return FindShell(ls.Target.Frame(), blueprint)
 }
 
-func (f *Frame) FindParam(blueprint *Object, param string) *Object {
+func (f *Frame) FindParam(blueprint *Shell, param string) *Shell {
 	ls := f.FindElement(param)
 	if ls == nil {
 		return nil
@@ -123,30 +112,30 @@ func (f *Frame) FindParam(blueprint *Object, param string) *Object {
 	return ls.FindParam(blueprint)
 }
 
-func FindObject(f *Frame, blueprint *Object) (o *Object) {
+func FindShell(f *Frame, blueprint *Shell) (s *Shell) {
 	if f.param {
-		o = blueprint.frame.FindParam(blueprint.parent, f.name)
+		s = blueprint.frame.FindParam(blueprint.parent, f.name)
 	}
-	if o == nil {
+	if s == nil {
 		m := blueprint.priv.(*Machine)
-		o = m.objects[f]
+		s = m.shells[f]
 	}
 	return
 }
 
-func (o *Object) Run(events chan Event) {
-	typ := o.typ
-	args := MakeArgs(o.frame, o.parent)
-	fmt.Printf("Running %v...\n", typ.Name())
-	o.running = true
-	o.execute = false
+func (s *Shell) Run(events chan Event) {
+	object := s.object
+	args := MakeArgs(s.frame, s.parent)
+	fmt.Printf("Running %v...\n", object.Name())
+	s.running = true
+	s.execute = false
 	go func() {
-		typ.Run(args)
-		events <- Event{Type: "Finished", Object: o}
+		object.Run(args)
+		events <- Event{Type: "Finished", Shell: s}
 	}()
 }
 
-var tasks chan *Object = make(chan *Object, 100)
+var tasks chan *Shell = make(chan *Shell, 100)
 
 type Event struct {
 	Type          string
@@ -154,7 +143,7 @@ type Event struct {
 	X, Y          float64
 	Code          string
 	Key           string
-	Object        *Object
+	Shell         *Shell
 	Client        Client
 }
 
@@ -194,9 +183,9 @@ func PointedLink(b *Blueprint, v Vec2) (best *Link) {
 
 // Links & Params
 
-var LinkTargetType Type = &PrimitiveType{
+var LinkTargetObject Object = &PrimitiveObject{
 	name: "",
-	instantiate: func(me *Object) {
+	instantiate: func(me *Shell) {
 		me.frame.size = vec2.Vec2{0, 0}
 	},
 }
@@ -204,7 +193,7 @@ var LinkTargetType Type = &PrimitiveType{
 func (b *Blueprint) MakeLinkTarget() *Frame {
 	f := b.AddFrame()
 	f.Hidden = true
-	b.FillWithNew(f, LinkTargetType)
+	b.FillWithNew(f, LinkTargetObject)
 	return f
 }
 
@@ -218,34 +207,6 @@ var textMargin float64 = margin * 1.75
 var shadowOffset = vec2.Vec2{margin, margin}
 
 /*
-func DrawBreadcrumb(bp *Object, ctx *Context2D) {
-	ctx.Save()
-	ctx.Translate(margin, margin)
-	ctx.TextAlign("center")
-	for it := bp; it != nil; it = it.parent {
-		text := "#bbb"
-		bg := "#444"
-		if it == bp {
-			text = "#fff"
-			bg = "#000"
-		}
-		ctx.FillStyle(bg)
-		ctx.BeginPath()
-		ctx.Rect(0, 0, buttonWidth, buttonHeight)
-		ctx.Fill()
-		if ctx.client.Editing(it.typ) {
-			DrawEditingOverlay(ctx)
-		}
-		ctx.FillStyle(text)
-		ctx.FillText(it.typ.Name(), buttonWidth/2, buttonHeight-textMargin)
-		ctx.Translate(0, margin+buttonHeight)
-	}
-	ctx.Restore()
-	return
-}
-*/
-
-/*
 P0
 - Sequencing
 - Blueprint-functions
@@ -257,6 +218,7 @@ P2
 - Minimum & maximum number of arguments
 - Browsing for all machines of a given type
 - Highlighting frames with the right type
+
 
 TODO:
 - delete FrameElement if it's not pointing anywhere

@@ -33,7 +33,7 @@ func (r Raise) Activate(ctx ui.TouchContext) ui.Action {
 			return ui.Return
 		}
 
-		oldF := bw.Object.frame
+		oldF := bw.Shell.frame
 		newB.frames = append(newB.frames, f)
 		f.blueprint = newB
 		f.pos = newPos
@@ -43,7 +43,7 @@ func (r Raise) Activate(ctx ui.TouchContext) ui.Action {
 			if frame == f {
 				X = x
 			}
-			// TODO: create parameter object and point it to the new frame
+			// TODO: create parameter and point it to the new frame
 			for s, _ := range frame.elems {
 				if f == frame.elems[s].Target {
 					frame.elems[s].Target = nil
@@ -52,23 +52,23 @@ func (r Raise) Activate(ctx ui.TouchContext) ui.Action {
 		}
 		oldB.frames = append(oldB.frames[:X], oldB.frames[X+1:]...)
 
-		for newO, _ := range newB.instances {
-			newM := newO.priv.(*Machine)
-			oldO, ok := newM.objects[oldF]
+		for newS, _ := range newB.instances {
+			newM := newS.priv.(*Machine)
+			oldS, ok := newM.shells[oldF]
 			if !ok {
 				continue
 			}
-			if oldO.typ != oldB {
+			if oldS.object != oldB {
 				continue
 			}
-			oldM := oldO.priv.(*Machine)
-			o, ok := oldM.objects[f]
+			oldM := oldS.priv.(*Machine)
+			s, ok := oldM.shells[f]
 			if !ok {
 				continue
 			}
-			delete(oldM.objects, f)
-			newM.objects[f] = o
-			o.parent = newO
+			delete(oldM.shells, f)
+			newM.shells[f] = s
+			s.parent = newS
 		}
 
 		return ui.Return
@@ -79,8 +79,8 @@ func (r Raise) Activate(ctx ui.TouchContext) ui.Action {
 // Lower
 
 type Lower struct {
-	Frame           *Frame
-	BlueprintObject *Object
+	Frame          *Frame
+	BlueprintShell *Shell
 }
 
 func (Lower) Name() string    { return "Lower" }
@@ -99,7 +99,7 @@ func (l Lower) Activate(ctx ui.TouchContext) ui.Action {
 				f := l.Frame
 				oldB := f.blueprint
 				newB := bw.Blueprint
-				newF := bw.Object.frame
+				newF := bw.Shell.frame
 				newB.frames = append(newB.frames, f)
 				f.blueprint = newB
 				f.pos = pos
@@ -118,28 +118,28 @@ func (l Lower) Activate(ctx ui.TouchContext) ui.Action {
 				}
 				oldB.frames = append(oldB.frames[:X], oldB.frames[X+1:]...)
 
-				for oldO, _ := range oldB.instances {
-					oldM := oldO.priv.(*Machine)
-					newO, ok := oldM.objects[newF]
+				for oldS, _ := range oldB.instances {
+					oldM := oldS.priv.(*Machine)
+					newS, ok := oldM.shells[newF]
 					if !ok {
 						continue
 					}
-					if newO.typ != newB {
+					if newS.object != newB {
 						continue
 					}
-					o, ok := oldM.objects[f]
+					s, ok := oldM.shells[f]
 					if !ok {
 						continue
 					}
-					delete(oldM.objects, f)
-					newM := newO.priv.(*Machine)
-					newM.objects[f] = o
-					o.parent = newO
+					delete(oldM.shells, f)
+					newM := newS.priv.(*Machine)
+					newM.shells[f] = s
+					s.parent = newS
 
 				}
 				return ui.Return
 			}
-			if bw.Object == l.BlueprintObject {
+			if bw.Shell == l.BlueprintShell {
 				mine = true
 				//fmt.Println("That's my blueprint!")
 			}
@@ -152,36 +152,36 @@ func (l Lower) Activate(ctx ui.TouchContext) ui.Action {
 // Schedule
 
 type Schedule struct {
-	Frame  *Frame
-	Object *Object
+	Frame *Frame
+	Shell *Shell
 }
 
 func (s Schedule) Name() string    { return "Schedule" }
 func (s Schedule) Keycode() string { return "Space" }
 func (s Schedule) Activate(ui.TouchContext) ui.Action {
-	s.Object.MarkForExecution()
+	s.Shell.MarkForExecution()
 	return nil
 }
 
 // Enter
 
 type Enter struct {
-	Object *Object
+	Shell *Shell
 }
 
 func (e Enter) Name() string    { return "Enter" }
 func (e Enter) Keycode() string { return "KeyE" }
 func (e Enter) Activate(ctx ui.TouchContext) ui.Action {
 	clientUI := ctx.Path[0].(*ClientUI)
-	clientUI.focus = e.Object
+	clientUI.focus = e.Shell
 	return nil
 }
 
 // New Blueprint
 
 type NewBlueprint struct {
-	Frame           *Frame
-	BlueprintObject *Object
+	Frame          *Frame
+	BlueprintShell *Shell
 }
 
 func (nb NewBlueprint) Name() string    { return "New blueprint" }
@@ -195,23 +195,23 @@ func (nb NewBlueprint) Activate(ctx ui.TouchContext) ui.Action {
 // Clear Frame
 
 type ClearFrame struct {
-	Frame  *Frame
-	Object *Object
+	Frame *Frame
+	Shell *Shell
 }
 
 func (cf ClearFrame) Name() string    { return "Clear frame" }
 func (cf ClearFrame) Keycode() string { return "KeyZ" }
 func (cf ClearFrame) Activate(ctx ui.TouchContext) ui.Action {
-	m := cf.Object.parent.priv.(*Machine)
-	delete(m.objects, cf.Frame)
+	m := cf.Shell.parent.priv.(*Machine)
+	delete(m.shells, cf.Frame)
 	return nil
 }
 
 // Copy Frame
 
 type CopyFrame struct {
-	Frame  *Frame
-	Object *Object
+	Frame *Frame
+	Shell *Shell
 }
 
 func (cf CopyFrame) Name() string    { return "Copy frame" }
@@ -221,8 +221,8 @@ func (cf CopyFrame) Activate(ctx ui.TouchContext) ui.Action {
 	f.pos = ctx.AtTopBlueprint().Position()
 	f.size = cf.Frame.size
 	f.ShowWindow = cf.Frame.ShowWindow
-	if cf.Object != nil {
-		cf.Frame.blueprint.FillWithNew(f, cf.Object.typ)
+	if cf.Shell != nil {
+		cf.Frame.blueprint.FillWithNew(f, cf.Shell.object)
 	}
 	return FrameDragging{f, vec2.Vec2{0, 0}}
 }
@@ -230,8 +230,8 @@ func (cf CopyFrame) Activate(ctx ui.TouchContext) ui.Action {
 // Frame clone
 
 type CloneFrame struct {
-	Frame  *Frame
-	Object *Object
+	Frame *Frame
+	Shell *Shell
 }
 
 func (cf CloneFrame) Name() string    { return "Clone frame" }
@@ -241,8 +241,8 @@ func (cf CloneFrame) Activate(ctx ui.TouchContext) ui.Action {
 	f.pos = ctx.AtTopBlueprint().Position()
 	f.size = cf.Frame.size
 	f.ShowWindow = cf.Frame.ShowWindow
-	if cf.Object != nil {
-		cf.Frame.blueprint.FillWithCopy(f, cf.Object)
+	if cf.Shell != nil {
+		cf.Frame.blueprint.FillWithCopy(f, cf.Shell)
 	}
 	return FrameDragging{f, vec2.Vec2{0, 0}}
 }
@@ -299,7 +299,7 @@ func (tsw ToggleShowWindow) Activate(ui.TouchContext) ui.Action {
 	return nil
 }
 
-// Add Parameter (frame / object parameter)
+// Add Parameter
 
 type AddParameter struct {
 	*Frame

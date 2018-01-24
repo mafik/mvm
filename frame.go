@@ -8,8 +8,8 @@ type Target interface {
 	Gobbable
 	Frame() *Frame
 	Position() vec2.Vec2
-	Get(blueprint *Object) *Object
-	Set(blueprint *Object, value *Object)
+	Get(blueprint *Shell) *Shell
+	Set(blueprint *Shell, value *Shell)
 }
 
 type TreeNode struct {
@@ -42,14 +42,14 @@ func (el *FrameElement) Position() vec2.Vec2 {
 func (el *FrameElement) PositionInFrame() vec2.Vec2 {
 	return el.frame.ParamCenter(el.Index())
 }
-func (el *FrameElement) Get(blueprint *Object) *Object {
-	object := el.frame.Get(blueprint)
-	return object.typ.GetMember(object, el.Name)
+func (el *FrameElement) Get(blueprint *Shell) *Shell {
+	shell := el.frame.Get(blueprint)
+	return shell.object.GetMember(shell, el.Name)
 }
-func (el *FrameElement) Set(blueprint *Object, value *Object) {
+func (el *FrameElement) Set(blueprint *Shell, value *Shell) {
 	//machine := blueprint.priv.(*Machine)
-	//object := machine.objects[el.frame]
-	// TODO: object.typ.SetMember(object, value)
+	//shell := machine.shells[el.frame]
+	// TODO: shell.object.SetMember(shell, value)
 }
 func (el *FrameElement) Index() int {
 	for i, other := range el.frame.elems {
@@ -62,15 +62,15 @@ func (el *FrameElement) Index() int {
 
 func (f *Frame) Frame() *Frame       { return f }
 func (f *Frame) Position() vec2.Vec2 { return f.pos }
-func (f *Frame) Get(blueprint *Object) *Object {
+func (f *Frame) Get(blueprint *Shell) *Shell {
 	machine := blueprint.priv.(*Machine)
-	return machine.objects[f]
+	return machine.shells[f]
 }
-func (f *Frame) Set(blueprint *Object, value *Object) {
+func (f *Frame) Set(blueprint *Shell, value *Shell) {
 	value.parent = blueprint
 	value.frame = f
 	machine := blueprint.priv.(*Machine)
-	machine.objects[f] = value
+	machine.shells[f] = value
 }
 
 type ElementPack struct {
@@ -79,12 +79,12 @@ type ElementPack struct {
 	Member       Member
 }
 
-func (f *Frame) ZipElements(o *Object) (zip []ElementPack) {
+func (f *Frame) ZipElements(s *Shell) (zip []ElementPack) {
 	var params []Parameter
 	var members []Member
-	if o != nil {
-		members = o.typ.Members()
-		params = o.typ.Parameters()
+	if s != nil {
+		members = s.object.Members()
+		params = s.object.Parameters()
 	}
 	for _, el := range f.elems {
 		i, param := GetParam(params, el.Name)
@@ -127,8 +127,8 @@ func (f *Frame) GetElement(name string) *FrameElement {
 	return elem
 }
 
-func (f *Frame) Object(blueprint_instance *Object) *Object {
-	return blueprint_instance.priv.(*Machine).objects[f]
+func (f *Frame) Shell(blueprint_instance *Shell) *Shell {
+	return blueprint_instance.priv.(*Machine).shells[f]
 }
 
 func (f *Frame) Name() string {
@@ -157,7 +157,7 @@ func (f *Frame) Delete() {
 	}
 	b.frames = append(b.frames[:X], b.frames[X+1:]...)
 	for m, _ := range b.instances {
-		delete(m.priv.(*Machine).objects, f)
+		delete(m.priv.(*Machine).shells, f)
 	}
 }
 

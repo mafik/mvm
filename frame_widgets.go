@@ -35,11 +35,11 @@ func (f *Frame) TitleHeight() float64 { return buttonHeight }
 func (f *Frame) PayloadLeft(m ui.TextMeasurer) float64 { return f.TitleRight(m) }
 func (f *Frame) PayloadTop() float64                   { return f.TitleTop() }
 func (f *Frame) PayloadBottom() float64                { return f.TitleBottom() }
-func (f *Frame) PayloadRight(obj *Object, m ui.TextMeasurer) float64 {
-	return f.PayloadLeft(m) + f.PayloadWidth(obj, m)
+func (f *Frame) PayloadRight(s *Shell, m ui.TextMeasurer) float64 {
+	return f.PayloadLeft(m) + f.PayloadWidth(s, m)
 }
-func (f *Frame) PayloadWidth(obj *Object, m ui.TextMeasurer) float64 {
-	return ButtonSize(m.MeasureText(obj.typ.Name()))
+func (f *Frame) PayloadWidth(s *Shell, m ui.TextMeasurer) float64 {
+	return ButtonSize(m.MeasureText(s.object.Name()))
 }
 func (f *Frame) PayloadHeight() float64 { return f.TitleHeight() }
 
@@ -65,9 +65,9 @@ func ParamOffset(i int) float64 {
 // Frame Title
 
 type FrameTitle struct {
-	Frame           *Frame
-	Object          *Object
-	BlueprintObject *Object
+	Frame          *Frame
+	Shell          *Shell
+	BlueprintShell *Shell
 }
 
 func (f FrameTitle) Draw(ctx *ui.Context2D) {
@@ -82,21 +82,21 @@ func (f FrameTitle) Draw(ctx *ui.Context2D) {
 func (f FrameTitle) Options(pos vec2.Vec2) []ui.Option {
 	options := []ui.Option{
 		FrameDragging{f.Frame, vec2.Vec2{0, 0}},
-		Schedule{f.Frame, f.Object},
+		Schedule{f.Frame, f.Shell},
 		DeleteFrame{f.Frame},
-		CopyFrame{f.Frame, f.Object},
-		CloneFrame{f.Frame, f.Object},
+		CopyFrame{f.Frame, f.Shell},
+		CloneFrame{f.Frame, f.Shell},
 		ToggleParameter{f.Frame},
 		TogglePublic{f.Frame},
 		ToggleShowWindow{f.Frame},
 		AddParameter{f.Frame},
 		Raise{f.Frame},
-		Lower{f.Frame, f.BlueprintObject},
+		Lower{f.Frame, f.BlueprintShell},
 	}
-	if f.Object != nil {
-		options = append(options, ClearFrame{f.Frame, f.Object})
+	if f.Shell != nil {
+		options = append(options, ClearFrame{f.Frame, f.Shell})
 	} else {
-		options = append(options, NewBlueprint{f.Frame, f.BlueprintObject})
+		options = append(options, NewBlueprint{f.Frame, f.BlueprintShell})
 	}
 	return options
 }
@@ -111,13 +111,13 @@ func (f FrameTitle) MyFrame() *Frame  { return f.Frame }
 type FrameElementPointer struct {
 	Frame     *Frame
 	Index     int
-	Blueprint *Object
+	Blueprint *Shell
 }
 
 func (self FrameElementPointer) Zip() ElementPack {
 	machine := self.Blueprint.priv.(*Machine)
-	object := machine.objects[self.Frame]
-	return self.Frame.ZipElements(object)[self.Index]
+	shell := machine.shells[self.Frame]
+	return self.Frame.ZipElements(shell)[self.Index]
 }
 func (self FrameElementPointer) Member() Member {
 	return self.Zip().Member
@@ -216,13 +216,13 @@ func (p FrameElementWidget) SetText(newName string) {
 }
 
 type FrameElementList struct {
-	Frame  *Frame
-	Object *Object
+	Frame *Frame
+	Shell *Shell
 }
 
 func (p FrameElementList) Draw(ctx *ui.Context2D) {
 	/*
-		params := p.Frame.Parameters(p.Object)
+		params := p.Frame.Parameters(p.Shell)
 		n := len(params)
 		if n > 0 {
 			ctx.LineWidth(2)
@@ -242,9 +242,9 @@ func (p FrameElementList) Transform(m ui.TextMeasurer) matrix.Matrix {
 	return matrix.Translate(vec2.Vec2{param_r, y})
 }
 func (p FrameElementList) Children() (children []interface{}) {
-	zip := p.Frame.ZipElements(p.Object)
+	zip := p.Frame.ZipElements(p.Shell)
 	for i, _ := range zip {
-		children = append(children, FrameElementWidget{FrameElementPointer{p.Frame, i, p.Object.parent}})
+		children = append(children, FrameElementWidget{FrameElementPointer{p.Frame, i, p.Shell.parent}})
 	}
 	return children
 }
@@ -252,8 +252,8 @@ func (p FrameElementList) Children() (children []interface{}) {
 // Frame Payload
 
 type FramePayload struct {
-	frame  *Frame
-	object *Object
+	frame *Frame
+	shell *Shell
 }
 
 func (fp FramePayload) Draw(ctx *ui.Context2D) {
@@ -263,16 +263,16 @@ func (fp FramePayload) Draw(ctx *ui.Context2D) {
 	ctx.Rect2(box)
 	ctx.Fill()
 	ctx.FillStyle(fp.frame.blueprint.DarkColor())
-	ctx.FillText(fp.object.typ.Name(), box.Left+margin, box.Bottom-textMargin)
+	ctx.FillText(fp.shell.object.Name(), box.Left+margin, box.Bottom-textMargin)
 }
 func (fp FramePayload) Size(m ui.TextMeasurer) ui.Box {
 	return ui.Box{fp.frame.PayloadTop(),
-		fp.frame.PayloadRight(fp.object, m),
+		fp.frame.PayloadRight(fp.shell, m),
 		fp.frame.PayloadBottom(),
 		fp.frame.PayloadLeft(m)}
 }
 func (fp FramePayload) Options(pos vec2.Vec2) []ui.Option {
-	return []ui.Option{FrameDragging{fp.frame, vec2.Vec2{0, 0}}, Enter{fp.object}}
+	return []ui.Option{FrameDragging{fp.frame, vec2.Vec2{0, 0}}, Enter{fp.shell}}
 }
 
 type FrameBlueprintPayload struct {
@@ -286,14 +286,14 @@ func (fbp FrameBlueprintPayload) SetText(text string) { fbp.Blueprint.name = tex
 // FrameWindow
 
 type FrameWindow struct {
-	Frame  *Frame
-	Object *Object
+	Frame *Frame
+	Shell *Shell
 }
 
 func (ft FrameWindow) Children() []interface{} {
-	o := ft.Object
-	if o != nil {
-		w := o.typ.MakeWidget(o)
+	s := ft.Shell
+	if s != nil {
+		w := s.object.MakeWidget(s)
 		if w != nil {
 			return []interface{}{w}
 		}
@@ -324,58 +324,58 @@ func (ft FrameWindow) MyFrame() *Frame { return ft.Frame }
 
 // Frame Scaffolding
 
-type FramedObject struct {
-	Frame           *Frame
-	Object          *Object
-	BlueprintObject *Object
+type FrameWidget struct {
+	Frame          *Frame
+	Shell          *Shell
+	BlueprintShell *Shell
 }
 
-func (fobj FramedObject) Draw(ctx *ui.Context2D) {
-	obj := fobj.Object
-	size := fobj.Frame.size
+func (w FrameWidget) Draw(ctx *ui.Context2D) {
+	shell := w.Shell
+	size := w.Frame.size
 
 	// Indicators
-	if obj != nil && obj.execute {
+	if shell != nil && shell.execute {
 		ctx.FillStyle("#f00")
 		ctx.BeginPath()
 		ctx.Rect2(ui.Box{-5, -5, size.X + 10, size.Y + 10})
 		ctx.Fill()
 	}
-	if obj != nil && obj.running {
+	if shell != nil && shell.running {
 		ctx.Hourglass("#f00")
 	}
 }
 
-func (fobj FramedObject) Options(p vec2.Vec2) []ui.Option {
-	size := fobj.Frame.size
+func (w FrameWidget) Options(p vec2.Vec2) []ui.Option {
+	size := w.Frame.size
 	box := ui.Box{0, size.X, size.Y, 0}
 	if box.Contains(p) {
-		return []ui.Option{StartFrameDragging(p, fobj.Frame), DeleteFrame{fobj.Frame}}
+		return []ui.Option{StartFrameDragging(p, w.Frame), DeleteFrame{w.Frame}}
 	}
 	return nil
 }
 
-func (fobj FramedObject) Children() []interface{} {
+func (w FrameWidget) Children() []interface{} {
 	widgets := make([]interface{}, 0, 5)
-	if fobj.Object != nil {
-		blueprint, ok := fobj.Object.typ.(*Blueprint)
+	if w.Shell != nil {
+		blueprint, ok := w.Shell.object.(*Blueprint)
 		if ok {
 			widgets = append(widgets, FrameBlueprintPayload{
-				FramePayload: FramePayload{fobj.Frame, fobj.Object},
+				FramePayload: FramePayload{w.Frame, w.Shell},
 				Blueprint:    blueprint,
 			})
 		} else {
-			widgets = append(widgets, FramePayload{fobj.Frame, fobj.Object})
+			widgets = append(widgets, FramePayload{w.Frame, w.Shell})
 		}
 	}
-	if fobj.Frame.ShowWindow {
-		widgets = append(widgets, FrameWindow{fobj.Frame, fobj.Object})
+	if w.Frame.ShowWindow {
+		widgets = append(widgets, FrameWindow{w.Frame, w.Shell})
 	}
-	widgets = append(widgets, FrameTitle{fobj.Frame, fobj.Object, fobj.BlueprintObject})
-	widgets = append(widgets, FrameElementList{fobj.Frame, fobj.Object})
+	widgets = append(widgets, FrameTitle{w.Frame, w.Shell, w.BlueprintShell})
+	widgets = append(widgets, FrameElementList{w.Frame, w.Shell})
 	return widgets
 }
 
-func (fobj FramedObject) Transform(ui.TextMeasurer) matrix.Matrix {
-	return matrix.Translate(fobj.Frame.pos)
+func (w FrameWidget) Transform(ui.TextMeasurer) matrix.Matrix {
+	return matrix.Translate(w.Frame.pos)
 }

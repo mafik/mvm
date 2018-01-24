@@ -68,7 +68,7 @@ func setupTest() (tc TestCase) {
 		up: make(chan string, 1000),
 	}
 	tc.Resize(1000, 1000)
-	TheVM.root = MakeObject(tc.bp, nil, nil)
+	TheVM.root = MakeShell(tc.bp, nil, nil)
 	tc.bp.Instantiate(TheVM.root)
 	return
 }
@@ -121,7 +121,7 @@ func TestMatrix(t *testing.T) {
 	}
 }
 
-func TestTypes(t *testing.T) {
+func TestObjects(t *testing.T) {
 	ok := false
 	var parent ui.Parent = nil
 	_, ok = parent.(*ClientUI)
