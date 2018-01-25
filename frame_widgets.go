@@ -353,10 +353,16 @@ func (w FrameWidget) Draw(ctx *ui.Context2D) {
 }
 
 func (w FrameWidget) Options(p vec2.Vec2) []ui.Option {
+	if w.Frame.Hidden {
+		return nil
+	}
+	if !w.Frame.ShowWindow {
+		return nil
+	}
 	size := w.Frame.size
 	box := ui.Box{0, size.X, size.Y, 0}
 	if box.Contains(p) {
-		return []ui.Option{StartFrameDragging(p, w.Frame), DeleteFrame{w.Frame}}
+		return []ui.Option{StartFrameDragging(p, w.Frame)}
 	}
 	return nil
 }
