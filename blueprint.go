@@ -19,6 +19,7 @@ type Blueprint struct {
 }
 
 type Machine struct {
+	*Blueprint
 	shells map[*Frame]*Shell
 }
 
@@ -45,8 +46,8 @@ func (b *Blueprint) Frames() (out []*Frame) {
 	return out
 }
 
-func (b *Blueprint) Parameters() (params []Parameter) {
-	for _, frame := range b.frames {
+func (self *Machine) Parameters() (params []Parameter) {
+	for _, frame := range self.frames {
 		if frame.param {
 			params = append(params, frame)
 		}
@@ -54,8 +55,8 @@ func (b *Blueprint) Parameters() (params []Parameter) {
 	return
 }
 
-func (b *Blueprint) Members() (members []Member) {
-	for _, frame := range b.frames {
+func (self *Machine) Members() (members []Member) {
+	for _, frame := range self.frames {
 		if frame.public {
 			members = append(members, frame)
 		}
@@ -63,34 +64,47 @@ func (b *Blueprint) Members() (members []Member) {
 	return
 }
 
-func (b *Blueprint) GetMember(self *Shell, name string) *Shell {
-	for _, frame := range b.frames {
+func (self *Machine) GetMember(name string) *Shell {
+	for _, frame := range self.frames {
 		if frame.name == name {
-			return frame.Shell(self)
+			return self.shells[frame]
 		}
 	}
 	return nil
 }
 
-func (b *Blueprint) Instantiate(s *Shell) {
-	s.priv = &Machine{
-		shells: make(map[*Frame]*Shell),
+func Copy(object Object, targetFrame *Frame, targetMachine *Shell) *Shell {
+	new := MakeShell(targetFrame, targetMachine)
+	if stateful, ok := object.(StatefulObject); ok {
+		stateful.Copy(new)
+	} else {
+		new.object = object
 	}
-	b.instances[s] = true
+	return new
 }
 
-func (b *Blueprint) Copy(from, to *Shell) {
-	b.Instantiate(to)
-	for frame, proto := range from.priv.(*Machine).shells {
-		new := MakeShell(proto.object, frame, to)
-		proto.object.Copy(proto, new)
+func MakeMachine(blueprint *Blueprint) *Machine {
+	return &Machine{
+		Blueprint: blueprint,
+		shells:    make(map[*Frame]*Shell),
 	}
 }
 
-func (b *Blueprint) Run(args Args) {
-	self := args.Get("self")
-	m := self.priv.(*Machine)
-	for frame, shell := range m.shells {
+func (self *Machine) Copy(shell *Shell) {
+	shell.object = MakeMachine(self.Blueprint)
+	self.instances[shell] = true
+	for frame, childShell := range self.shells {
+		new := MakeShell(frame, shell)
+		if stateful, ok := childShell.object.(StatefulObject); ok {
+			stateful.Copy(new)
+		} else {
+			new.object = childShell.object
+		}
+	}
+}
+
+func (self *Machine) Run(args Args) {
+	for frame, shell := range self.shells {
 		if frame.name == "run" {
 			shell.MarkForExecution()
 			return
@@ -117,17 +131,9 @@ func (bp *Blueprint) AddFrame() *Frame {
 	return frame
 }
 
-func (bp *Blueprint) FillWithNew(frame *Frame, object Object) {
-	for instance, _ := range bp.instances {
-		s := MakeShell(object, frame, instance)
-		object.Instantiate(s)
-	}
-}
-
 func (bp *Blueprint) FillWithCopy(frame *Frame, proto *Shell) {
 	for instance, _ := range bp.instances {
-		s := MakeShell(proto.object, frame, instance)
-		proto.object.Copy(proto, s)
+		Copy(proto.object, frame, instance)
 	}
 }
 
@@ -216,7 +222,7 @@ func (w BlueprintWidget) Children() []interface{} {
 		if frame.Hidden {
 			continue
 		}
-		children = append(children, FrameWidget{frame, frame.Shell(w.Shell), w.Shell})
+		children = append(children, FrameWidget{frame, frame.Get(w.Shell), w.Shell})
 	}
 	return children
 }

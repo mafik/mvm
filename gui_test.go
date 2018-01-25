@@ -68,8 +68,8 @@ func setupTest() (tc TestCase) {
 		up: make(chan string, 1000),
 	}
 	tc.Resize(1000, 1000)
-	TheVM.root = MakeShell(tc.bp, nil, nil)
-	tc.bp.Instantiate(TheVM.root)
+	TheVM.root = MakeShell(nil, nil)
+	TheVM.root.object = MakeMachine(tc.bp)
 	return
 }
 

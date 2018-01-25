@@ -7,14 +7,15 @@ import (
 )
 
 func SetupDefault() {
-	welcome := MakeBlueprint("root")
-	TheVM.root = MakeShell(welcome, nil, nil)
-	welcome.Instantiate(TheVM.root)
+	b := MakeBlueprint("root")
+	s := MakeShell(nil, nil)
+	s.object = MakeMachine(b)
+	TheVM.root = s
 
 	var x float64
-	for _, t := range Objects {
-		f := welcome.AddFrame()
-		welcome.FillWithNew(f, t)
+	for _, o := range Objects {
+		f := b.AddFrame()
+		Copy(o, f, s)
 		f.pos.X = x
 		x += f.size.X + margin
 	}

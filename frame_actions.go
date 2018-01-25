@@ -53,7 +53,7 @@ func (r Raise) Activate(ctx ui.TouchContext) ui.Action {
 		oldB.frames = append(oldB.frames[:X], oldB.frames[X+1:]...)
 
 		for newS, _ := range newB.instances {
-			newM := newS.priv.(*Machine)
+			newM := newS.object.(*Machine)
 			oldS, ok := newM.shells[oldF]
 			if !ok {
 				continue
@@ -61,7 +61,7 @@ func (r Raise) Activate(ctx ui.TouchContext) ui.Action {
 			if oldS.object != oldB {
 				continue
 			}
-			oldM := oldS.priv.(*Machine)
+			oldM := oldS.object.(*Machine)
 			s, ok := oldM.shells[f]
 			if !ok {
 				continue
@@ -119,7 +119,7 @@ func (l Lower) Activate(ctx ui.TouchContext) ui.Action {
 				oldB.frames = append(oldB.frames[:X], oldB.frames[X+1:]...)
 
 				for oldS, _ := range oldB.instances {
-					oldM := oldS.priv.(*Machine)
+					oldM := oldS.object.(*Machine)
 					newS, ok := oldM.shells[newF]
 					if !ok {
 						continue
@@ -132,7 +132,7 @@ func (l Lower) Activate(ctx ui.TouchContext) ui.Action {
 						continue
 					}
 					delete(oldM.shells, f)
-					newM := newS.priv.(*Machine)
+					newM := newS.object.(*Machine)
 					newM.shells[f] = s
 					s.parent = newS
 
@@ -180,15 +180,16 @@ func (e Enter) Activate(ctx ui.TouchContext) ui.Action {
 // New Blueprint
 
 type NewBlueprint struct {
-	Frame          *Frame
-	BlueprintShell *Shell
+	Frame   *Frame
+	Machine *Shell
 }
 
 func (nb NewBlueprint) Name() string    { return "New blueprint" }
 func (nb NewBlueprint) Keycode() string { return "KeyZ" }
 func (nb NewBlueprint) Activate(ctx ui.TouchContext) ui.Action {
 	b := MakeBlueprint("New blueprint")
-	nb.Frame.blueprint.FillWithNew(nb.Frame, b)
+	s := MakeShell(nb.Frame, nb.Machine)
+	s.object = MakeMachine(b)
 	return nil
 }
 
@@ -202,7 +203,7 @@ type ClearFrame struct {
 func (cf ClearFrame) Name() string    { return "Clear frame" }
 func (cf ClearFrame) Keycode() string { return "KeyZ" }
 func (cf ClearFrame) Activate(ctx ui.TouchContext) ui.Action {
-	m := cf.Shell.parent.priv.(*Machine)
+	m := cf.Shell.parent.object.(*Machine)
 	delete(m.shells, cf.Frame)
 	return nil
 }
@@ -222,7 +223,7 @@ func (cf CopyFrame) Activate(ctx ui.TouchContext) ui.Action {
 	f.size = cf.Frame.size
 	f.ShowWindow = cf.Frame.ShowWindow
 	if cf.Shell != nil {
-		cf.Frame.blueprint.FillWithNew(f, cf.Shell.object)
+		Copy(cf.Shell.object, f, cf.Shell.parent)
 	}
 	return FrameDragging{f, vec2.Vec2{0, 0}}
 }

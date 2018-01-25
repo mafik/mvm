@@ -112,19 +112,19 @@ func (f *Frame) FindParam(blueprint *Shell, param string) *Shell {
 	return ls.FindParam(blueprint)
 }
 
-func FindShell(f *Frame, blueprint *Shell) (s *Shell) {
+func FindShell(f *Frame, machineShell *Shell) *Shell {
 	if f.param {
-		s = blueprint.frame.FindParam(blueprint.parent, f.name)
+		return machineShell.frame.FindParam(machineShell.parent, f.name)
 	}
-	if s == nil {
-		m := blueprint.priv.(*Machine)
-		s = m.shells[f]
-	}
-	return
+	m := machineShell.object.(*Machine)
+	return m.shells[f]
 }
 
 func (s *Shell) Run(events chan Event) {
-	object := s.object
+	object, ok := s.object.(RunnableObject)
+	if !ok {
+		s.execute = false
+	}
 	args := MakeArgs(s.frame, s.parent)
 	fmt.Printf("Running %v...\n", object.Name())
 	s.running = true
@@ -183,17 +183,10 @@ func PointedLink(b *Blueprint, v Vec2) (best *Link) {
 
 // Links & Params
 
-var LinkTargetObject Object = &PrimitiveObject{
-	name: "",
-	instantiate: func(me *Shell) {
-		me.frame.size = vec2.Vec2{0, 0}
-	},
-}
-
 func (b *Blueprint) MakeLinkTarget() *Frame {
 	f := b.AddFrame()
+	f.size = vec2.Vec2{0, 0}
 	f.Hidden = true
-	b.FillWithNew(f, LinkTargetObject)
 	return f
 }
 

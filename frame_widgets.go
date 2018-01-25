@@ -109,13 +109,13 @@ func (f FrameTitle) SetText(s string) { f.Frame.name = s }
 func (f FrameTitle) MyFrame() *Frame  { return f.Frame }
 
 type FrameElementPointer struct {
-	Frame     *Frame
-	Index     int
-	Blueprint *Shell
+	Frame   *Frame
+	Index   int
+	Machine *Shell
 }
 
 func (self FrameElementPointer) Zip() ElementPack {
-	machine := self.Blueprint.priv.(*Machine)
+	machine := self.Machine.object.(*Machine)
 	shell := machine.shells[self.Frame]
 	return self.Frame.ZipElements(shell)[self.Index]
 }
@@ -292,8 +292,11 @@ type FrameWindow struct {
 
 func (ft FrameWindow) Children() []interface{} {
 	s := ft.Shell
-	if s != nil {
-		w := s.object.MakeWidget(s)
+	if s == nil {
+		return nil
+	}
+	if graphic, ok := s.object.(GraphicObject); ok {
+		w := graphic.MakeWidget(s)
 		if w != nil {
 			return []interface{}{w}
 		}

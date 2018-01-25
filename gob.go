@@ -55,6 +55,9 @@ func RegisterGobs() {
 	gob.Register(FrameGob{})
 	gob.Register(ElementGob{})
 	gob.Register(ShellGob{})
+	for _, o := range Objects {
+		gob.Register(o)
+	}
 }
 
 func Flatten(ble Gobbable) ([]byte, error) {
@@ -238,48 +241,44 @@ type MachineGob struct {
 }
 
 func (mach *Machine) Gob(s Serializer) Gob {
-	gob := MachineGob{Shells: make(map[int]int)}
+	gob := MachineGob{Blueprint: s.Id(mach.Blueprint), Shells: make(map[int]int)}
 	for frame, shell := range mach.shells {
 		gob.Shells[s.Id(frame)] = s.Id(shell)
 	}
 	return gob
 }
 
-func (gob MachineGob) Ungob() Gobbable { return &Machine{make(map[*Frame]*Shell)} }
+func (gob MachineGob) Ungob() Gobbable { return &Machine{nil, make(map[*Frame]*Shell)} }
 
 func (m *Machine) Connect(d Deserializer, gob Gob) {
 	mGob := gob.(MachineGob)
+	m.Blueprint = d.Get(mGob.Blueprint).(*Blueprint)
 	for f, s := range mGob.Shells {
 		m.shells[d.Get(f).(*Frame)] = d.Get(s).(*Shell)
 	}
 }
 
 type ShellGob struct {
-	Parent          int
-	Frame           int
-	Execute         bool
-	PrimitiveObject string
-	BlueprintObject int
-	Private         interface{}
+	Parent  int
+	Frame   int
+	Execute bool
+	Object  interface{}
 }
 
 func (shell *Shell) Gob(s Serializer) Gob {
 	gob := ShellGob{
-		Execute:         shell.execute,
-		PrimitiveObject: "",
-		Private:         shell.priv,
+		Execute: shell.execute,
+	}
+	if gobbable, ok := shell.object.(Gobbable); ok {
+		gob.Object = gobbable.Gob(s)
+	} else {
+		gob.Object = shell.object
 	}
 	if shell.parent != nil {
 		gob.Parent = s.Id(shell.parent)
 	}
 	if shell.frame != nil {
 		gob.Frame = s.Id(shell.frame)
-	}
-	if blue, ok := shell.object.(*Blueprint); ok {
-		gob.BlueprintObject = s.Id(blue)
-		gob.Private = gob.Private.(*Machine).Gob(s)
-	} else {
-		gob.PrimitiveObject = shell.object.Name()
 	}
 	return gob
 }
@@ -288,10 +287,10 @@ func (gob ShellGob) Ungob() Gobbable {
 	s := &Shell{
 		execute: gob.Execute,
 	}
-	if gob.BlueprintObject == 0 {
-		s.priv = gob.Private
+	if objGob, ok := gob.Object.(Gob); ok {
+		s.object = objGob.Ungob().(Object)
 	} else {
-		s.priv = gob.Private.(MachineGob).Ungob()
+		s.object = gob.Object.(Object)
 	}
 	return s
 }
@@ -304,10 +303,7 @@ func (shell *Shell) Connect(d Deserializer, gob Gob) {
 	if frame, ok := d.Get(objGob.Frame).(*Frame); ok {
 		shell.frame = frame
 	}
-	if objGob.BlueprintObject == 0 {
-		shell.object = Objects[objGob.PrimitiveObject]
-	} else {
-		shell.object = d.Get(objGob.BlueprintObject).(*Blueprint)
-		shell.priv.(*Machine).Connect(d, objGob.Private.(MachineGob))
+	if gobbable, ok := shell.object.(Gobbable); ok {
+		gobbable.Connect(d, objGob.Object.(Gob))
 	}
 }

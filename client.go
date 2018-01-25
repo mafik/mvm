@@ -86,8 +86,12 @@ func (c *ClientUI) Options(vec2.Vec2) []ui.Option {
 	return []ui.Option{Quit{}, GoUp{c}}
 }
 
-func (c *ClientUI) Children() []interface{} {
-	return []interface{}{Background{c.size}, c.focus.object.MakeWidget(c.focus)}
+func (c *ClientUI) Children() (children []interface{}) {
+	children = append(children, Background{c.size})
+	if graphic, ok := c.focus.object.(GraphicObject); ok {
+		children = append(children, graphic.MakeWidget(c.focus))
+	}
+	return
 }
 
 func (c *ClientUI) Transform(ui.TextMeasurer) matrix.Matrix {

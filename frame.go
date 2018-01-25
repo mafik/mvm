@@ -44,7 +44,11 @@ func (el *FrameElement) PositionInFrame() vec2.Vec2 {
 }
 func (el *FrameElement) Get(blueprint *Shell) *Shell {
 	shell := el.frame.Get(blueprint)
-	return shell.object.GetMember(shell, el.Name)
+	if complex, ok := shell.object.(ComplexObject); ok {
+		return complex.GetMember(el.Name)
+	} else {
+		return nil
+	}
 }
 func (el *FrameElement) Set(blueprint *Shell, value *Shell) {
 	//machine := blueprint.priv.(*Machine)
@@ -62,15 +66,13 @@ func (el *FrameElement) Index() int {
 
 func (f *Frame) Frame() *Frame       { return f }
 func (f *Frame) Position() vec2.Vec2 { return f.pos }
-func (f *Frame) Get(blueprint *Shell) *Shell {
-	machine := blueprint.priv.(*Machine)
-	return machine.shells[f]
+func (f *Frame) Get(machine *Shell) *Shell {
+	return machine.object.(*Machine).shells[f]
 }
-func (f *Frame) Set(blueprint *Shell, value *Shell) {
-	value.parent = blueprint
+func (f *Frame) Set(machine *Shell, value *Shell) {
+	machine.object.(*Machine).shells[f] = value
+	value.parent = machine
 	value.frame = f
-	machine := blueprint.priv.(*Machine)
-	machine.shells[f] = value
 }
 
 type ElementPack struct {
@@ -83,8 +85,12 @@ func (f *Frame) ZipElements(s *Shell) (zip []ElementPack) {
 	var params []Parameter
 	var members []Member
 	if s != nil {
-		members = s.object.Members()
-		params = s.object.Parameters()
+		if complex, ok := s.object.(ComplexObject); ok {
+			members = complex.Members()
+		}
+		if runnable, ok := s.object.(RunnableObject); ok {
+			params = runnable.Parameters()
+		}
 	}
 	for _, el := range f.elems {
 		i, param := GetParam(params, el.Name)
@@ -127,10 +133,6 @@ func (f *Frame) GetElement(name string) *FrameElement {
 	return elem
 }
 
-func (f *Frame) Shell(blueprint_instance *Shell) *Shell {
-	return blueprint_instance.priv.(*Machine).shells[f]
-}
-
 func (f *Frame) Name() string {
 	return f.name
 }
@@ -157,7 +159,7 @@ func (f *Frame) Delete() {
 	}
 	b.frames = append(b.frames[:X], b.frames[X+1:]...)
 	for m, _ := range b.instances {
-		delete(m.priv.(*Machine).shells, f)
+		delete(m.object.(*Machine).shells, f)
 	}
 }
 

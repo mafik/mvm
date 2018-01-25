@@ -23,13 +23,28 @@ type Member interface {
 
 type Object interface {
 	Name() string
-	Parameters() []Parameter
+}
+
+type StatefulObject interface {
+	Object
+	Copy(*Shell)
+	// TODO: Destroy()
+}
+
+type ComplexObject interface {
+	Object
 	Members() []Member
-	GetMember(*Shell, string) *Shell
-	Instantiate(*Shell) // TODO: remove
-	Copy(from, to *Shell)
+	GetMember(string) *Shell
+}
+
+type RunnableObject interface {
+	Object
+	Parameters() []Parameter
 	Run(Args)
-	String(interface{}) string
+}
+
+type GraphicObject interface {
+	Object
 	MakeWidget(*Shell) ui.Widget
 }
 
