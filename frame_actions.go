@@ -243,7 +243,7 @@ func (cf CloneFrame) Activate(ctx ui.TouchContext) ui.Action {
 	f.size = cf.Frame.size
 	f.ShowWindow = cf.Frame.ShowWindow
 	if cf.Shell != nil {
-		cf.Frame.blueprint.FillWithCopy(f, cf.Shell)
+		f.blueprint.FillWithCopy(f, cf.Shell)
 	}
 	return FrameDragging{f, vec2.Vec2{0, 0}}
 }

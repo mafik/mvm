@@ -213,6 +213,16 @@ P2
 - Highlighting frames with the right type
 
 
+Goffi integration TODOs:
+- C.int
+- alternative ( C.int, C.int ) -> ( C.int )
+- dlopen flags object: RTLD_GLOBAL, RTLD_LAZY, ...
+- OpenLibrary ( path string, flags C.int ) -> (Library, error)
+- Library (REF)
+- GetFunction ( Library, symbol string, Type, args Type...) -> (Function, error)
+- Function (REF)
+
+
 TODO:
 - delete FrameElement if it's not pointing anywhere
 - fix parameter renaming

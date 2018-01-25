@@ -9,6 +9,7 @@ import (
 func SetupDefault() {
 	b := MakeBlueprint("root")
 	s := MakeShell(nil, nil)
+	b.instances[s] = true
 	s.object = MakeMachine(b)
 	TheVM.root = s
 

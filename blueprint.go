@@ -84,10 +84,11 @@ func Copy(object Object, targetFrame *Frame, targetMachine *Shell) *Shell {
 }
 
 func MakeMachine(blueprint *Blueprint) *Machine {
-	return &Machine{
+	m := &Machine{
 		Blueprint: blueprint,
 		shells:    make(map[*Frame]*Shell),
 	}
+	return m
 }
 
 func (self *Machine) Copy(shell *Shell) {

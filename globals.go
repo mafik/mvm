@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/cookieo9/goffi/fcall"
 	"github.com/mafik/mvm/ui"
 	"github.com/mafik/mvm/vec2"
 )
@@ -122,11 +123,96 @@ func (ExecType) Run(args Args) {
 	args.Get("stdout").object.(*Text).Bytes = out
 }
 
-var Objects map[string]Object = map[string]Object{
-	"format": FormatType{},
-	"text":   &Text{},
-	"exec":   ExecType{},
-	"copy":   CopyType{},
+type CType struct{ value fcall.Type }
+
+func (ctype CType) Name() string {
+	switch ctype.value {
+	case fcall.VOID:
+		return "ctype:void"
+	case fcall.UINT8:
+		return "ctype:uint8"
+	case fcall.UINT16:
+		return "ctype:uint16"
+	case fcall.UINT32:
+		return "ctype:uint32"
+	case fcall.UINT64:
+		return "ctype:uint64"
+	case fcall.SINT8:
+		return "ctype:int8"
+	case fcall.SINT16:
+		return "ctype:int16"
+	case fcall.SINT32:
+		return "ctype:int32"
+	case fcall.SINT64:
+		return "ctype:int64"
+	case fcall.FLOAT:
+		return "ctype:float"
+	case fcall.DOUBLE:
+		return "ctype:double"
+	case fcall.POINTER:
+		return "ctype:pointer"
+	default:
+		return "ctype:???"
+	}
+}
+
+type CTypes []CType
+
+var CTypesArray CTypes = CTypes{
+	CType{value: fcall.VOID},
+	CType{value: fcall.UINT8},
+	CType{value: fcall.UINT16},
+	CType{value: fcall.UINT32},
+	CType{value: fcall.UINT64},
+	CType{value: fcall.SINT8},
+	CType{value: fcall.SINT16},
+	CType{value: fcall.SINT32},
+	CType{value: fcall.SINT64},
+	CType{value: fcall.FLOAT},
+	CType{value: fcall.DOUBLE},
+	CType{value: fcall.POINTER},
+}
+
+func (CTypes) Name() string { return "C types" }
+func (self CTypes) Members() (m []Member) {
+	for _, t := range self {
+		m = append(m, t)
+	}
+	return m
+}
+func (self CTypes) GetMember(name string) *Shell {
+	for _, t := range self {
+		if t.Name() == name {
+			s := MakeShell(nil, nil)
+			s.object = t
+			return s
+		}
+	}
+	return nil
+}
+
+type CTypesGob struct{}
+
+func (CTypesGob) Ungob() Gobbable {
+	return CTypesArray
+}
+func (CTypes) Gob(Serializer) Gob {
+	return CTypesGob{}
+}
+func (CTypes) Connect(Deserializer, Gob) {}
+
+var nthuo Gobbable = CTypesArray
+
+var Gobs []Gob = []Gob{
+	CTypesGob{},
+}
+
+var Objects []Object = []Object{
+	FormatType{},
+	&Text{},
+	ExecType{},
+	CopyType{},
+	CTypesArray,
 }
 
 var TheVM *VM = &VM{}

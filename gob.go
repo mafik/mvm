@@ -58,6 +58,9 @@ func RegisterGobs() {
 	for _, o := range Objects {
 		gob.Register(o)
 	}
+	for _, o := range Gobs {
+		gob.Register(o)
+	}
 }
 
 func Flatten(ble Gobbable) ([]byte, error) {
