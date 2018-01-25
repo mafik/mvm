@@ -335,17 +335,20 @@ type FrameWidget struct {
 
 func (w FrameWidget) Draw(ctx *ui.Context2D) {
 	shell := w.Shell
-	size := w.Frame.size
+	f := w.Frame
 
 	// Indicators
 	if shell != nil && shell.execute {
 		ctx.FillStyle("#f00")
 		ctx.BeginPath()
-		ctx.Rect2(ui.Box{-5, -5, size.X + 10, size.Y + 10})
+		ctx.Rect2(ui.Box{f.TitleTop() - 5, f.PayloadRight(shell, ctx) + 5, f.TitleBottom() + 5, f.TitleLeft() - 5})
 		ctx.Fill()
 	}
 	if shell != nil && shell.running {
+		ctx.Save()
+		ctx.Translate(-4, -5)
 		ctx.Hourglass("#f00")
+		ctx.Restore()
 	}
 }
 
