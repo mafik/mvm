@@ -114,39 +114,41 @@ type FrameElementPointer struct {
 	Machine *Shell
 }
 
-func (self FrameElementPointer) Zip() ElementPack {
+func (self *FrameElementPointer) Zip() ElementPack {
 	machine := self.Machine.object.(*Machine)
 	shell := machine.shells[self.Frame]
 	return self.Frame.ZipElements(shell)[self.Index]
 }
-func (self FrameElementPointer) Member() Member {
+func (self *FrameElementPointer) Member() Member {
 	return self.Zip().Member
 }
-func (self FrameElementPointer) Param() Member {
+func (self *FrameElementPointer) Param() Member {
 	return self.Zip().Param
 }
-func (self FrameElementPointer) PositionInFrame() vec2.Vec2 {
+func (self *FrameElementPointer) PositionInFrame() vec2.Vec2 {
 	return vec2.Vec2{0, ParamOffset(self.Index)}
 }
-func (self FrameElementPointer) IsMember() bool {
+func (self *FrameElementPointer) IsMember() bool {
 	return self.Member() != nil
 }
-func (self FrameElementPointer) IsDefined() bool {
+func (self *FrameElementPointer) IsDefined() bool {
 	return self.Member() != nil || self.Param() != nil
 }
-func (self FrameElementPointer) FrameElement() *FrameElement {
+func (self *FrameElementPointer) FrameElement() *FrameElement {
 	if self.Index < len(self.Frame.elems) {
 		return self.Frame.elems[self.Index]
 	}
 	return nil
 }
-func (self FrameElementPointer) MakeFrameElement() *FrameElement {
+func (self *FrameElementPointer) MakeFrameElement() *FrameElement {
 	if el := self.FrameElement(); el != nil {
 		return el
 	}
-	return self.Frame.GetElement(self.Name())
+	el := self.Frame.GetElement(self.Name())
+	self.Index = len(self.Frame.elems) - 1
+	return el
 }
-func (self FrameElementPointer) Name() string {
+func (self *FrameElementPointer) Name() string {
 	pack := self.Zip()
 	if pack.FrameElement != nil {
 		return pack.FrameElement.Name
@@ -179,7 +181,7 @@ func (p FrameElementCircle) Draw(ctx *ui.Context2D) {
 	}
 }
 func (p FrameElementCircle) Options(pos vec2.Vec2) []ui.Option {
-	return []ui.Option{ParameterDragging{p.FrameElementPointer}}
+	return []ui.Option{&ParameterDragging{p.FrameElementPointer}}
 }
 func (p FrameElementCircle) Size(ui.TextMeasurer) ui.Box {
 	return ui.Box{-param_r, param_r, param_r, -param_r}

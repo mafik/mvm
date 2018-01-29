@@ -416,19 +416,23 @@ type ParameterDragging struct {
 	FrameElementPointer
 }
 
-func (d ParameterDragging) Name() string    { return "Connect" }
-func (d ParameterDragging) Keycode() string { return "KeyF" }
-func (d ParameterDragging) Activate(t ui.TouchContext) ui.Action {
+func (d *ParameterDragging) Name() string    { return "Connect" }
+func (d *ParameterDragging) Keycode() string { return "KeyF" }
+func (d *ParameterDragging) Activate(t ui.TouchContext) ui.Action {
 	dummyTarget := d.Frame.blueprint.MakeLinkTarget()
 	dummyTarget.pos = t.At(IsBlueprintWidget).Position()
 	d.MakeFrameElement().Target = dummyTarget
 	return d
 }
-func (d ParameterDragging) Move(t ui.TouchContext) ui.Action {
-	d.FrameElement().Target.Frame().pos.Add(t.Delta())
+func (d *ParameterDragging) Move(t ui.TouchContext) ui.Action {
+	el := d.FrameElement()
+	target := el.Target
+	frame := target.Frame()
+	delta := t.Delta()
+	frame.pos.Add(delta)
 	return d
 }
-func (d ParameterDragging) End(ctx ui.TouchContext) {
+func (d *ParameterDragging) End(ctx ui.TouchContext) {
 	dummy := d.FrameElement().Target.Frame()
 	ctx.At(IsBlueprintWidget).Query(func(path ui.TreePath, p vec2.Vec2) ui.WalkAction {
 		elem := path[len(path)-1]

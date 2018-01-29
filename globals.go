@@ -193,15 +193,95 @@ func (self CTypes) GetMember(name string) *Shell {
 
 type CTypesGob struct{}
 
-func (CTypesGob) Ungob() Gobbable {
-	return CTypesArray
-}
-func (CTypes) Gob(Serializer) Gob {
-	return CTypesGob{}
-}
+func (CTypesGob) Ungob() Gobbable        { return CTypesArray }
+func (CTypes) Gob(Serializer) Gob        { return CTypesGob{} }
 func (CTypes) Connect(Deserializer, Gob) {}
 
-var nthuo Gobbable = CTypesArray
+type Ptr uintptr
+type PtrWidget struct{ *Shell }
+
+type Wrapper interface {
+	Unwrap() interface{}
+}
+
+func (Ptr) Name() string                        { return "pointer" }
+func (Ptr) MakeWidget(s *Shell) ui.Widget       { return PtrWidget{s} }
+func (self Ptr) Unwrap() interface{}            { return uintptr(self) }
+func (PtrWidget) Options(vec2.Vec2) []ui.Option { return nil }
+func (w PtrWidget) Draw(ctx *ui.Context2D) {
+	s := fmt.Sprintf("0x%x", w.object.(Ptr))
+	ctx.TextAlign("center")
+	ctx.FillStyle("#000")
+	ctx.FillText(s, 0, 0)
+}
+
+type CString struct{}
+
+var CStringParameters []Parameter = []Parameter{
+	&FixedParameter{"s"},
+	&FixedParameter{"result"},
+}
+
+func (CString) Name() string            { return "CString" }
+func (CString) Parameters() []Parameter { return CStringParameters }
+func (CString) Run(args Args) {
+	s := string(args.Get("s").object.(*Text).Bytes)
+	ptr := fcall.CString(s)
+	shell := MakeShell(nil, nil)
+	shell.object = Ptr(ptr)
+	args.Set("result", shell)
+}
+
+type Function struct {
+	f      fcall.Function
+	name   string
+	rtype  CType
+	atypes []CType
+}
+
+func (f *Function) Name() string { return f.name }
+func (f *Function) Parameters() (params []Parameter) {
+	for i, _ := range f.atypes {
+		params = append(params, &FixedParameter{fmt.Sprint(i)})
+	}
+	params = append(params, &FixedParameter{"ret"})
+	return
+}
+func (f *Function) Run(args Args) {
+	var fargs []interface{}
+	for i, _ := range f.atypes {
+		farg := args.Get(fmt.Sprint(i)).object.(Wrapper).Unwrap()
+		fargs = append(fargs, farg)
+	}
+	ret := f.f(fargs).(Object)
+	shell := MakeShell(nil, nil)
+	shell.object = ret
+	args.Set("ret", shell)
+}
+
+type GetFunction struct{}
+
+var GetFunctionParameters []Parameter = []Parameter{
+	&FixedParameter{"name"},
+	&FixedParameter{"rtype"},
+	&FixedParameter{"atypes"},
+	&FixedParameter{"result"},
+}
+
+func (GetFunction) Name() string            { return "GetFunction" }
+func (GetFunction) Parameters() []Parameter { return GetFunctionParameters }
+func (GetFunction) Run(args Args) {
+	name := string(args.Get("name").object.(*Text).Bytes)
+	rtype := args.Get("rtype").object.(CType)
+	atype := args.Get("atypes").object.(CType)
+	f, err := fcall.GetFunction(name, rtype.value, atype.value)
+	if err != nil {
+		panic(err)
+	}
+	shell := MakeShell(nil, nil)
+	shell.object = &Function{f, name, rtype, []CType{atype}}
+	args.Set("result", shell)
+}
 
 var Gobs []Gob = []Gob{
 	CTypesGob{},
@@ -212,7 +292,11 @@ var Objects []Object = []Object{
 	&Text{},
 	ExecType{},
 	CopyType{},
+	Ptr(0),
 	CTypesArray,
+	CString{},
+	GetFunction{},
+	&Function{nil, "fn", CType{fcall.VOID}, nil},
 }
 
 var TheVM *VM = &VM{}
