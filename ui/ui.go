@@ -38,8 +38,8 @@ type Transformed interface {
 	Transform(TextMeasurer) matrix.Matrix
 }
 
-func WalkAtPoint(m TextMeasurer, start interface{}, point vec2.Vec2, callback func(TreePath, vec2.Vec2) WalkAction) {
-	Walk(start, func(path TreePath) WalkAction {
+func WalkAtPoint(m TextMeasurer, start interface{}, point vec2.Vec2, callback func(WidgetPath, vec2.Vec2) WalkAction) {
+	Walk(start, func(path WidgetPath) WalkAction {
 		localPoint := ToLocal(m, path, point)
 		last := path[len(path)-1]
 		if sized, ok := last.(Sized); ok {
@@ -57,7 +57,7 @@ type TraversalContext interface {
 }
 
 func Draw(travCtx TraversalContext, root interface{}, ctx *Context2D) {
-	Walk(root, func(path TreePath) WalkAction {
+	Walk(root, func(path WidgetPath) WalkAction {
 		//fmt.Println("Visiting", path[len(path)-1], "at depth", len(path))
 		ctx.Save()
 		if t, ok := path[len(path)-1].(Transformed); ok {
@@ -67,7 +67,7 @@ func Draw(travCtx TraversalContext, root interface{}, ctx *Context2D) {
 			d.Draw(ctx)
 		}
 		return Explore
-	}, func(path TreePath) {
+	}, func(path WidgetPath) {
 		last := path[len(path)-1]
 		if d, ok := last.(PostDrawable); ok {
 			d.PostDraw(ctx)
@@ -90,11 +90,11 @@ func Draw(travCtx TraversalContext, root interface{}, ctx *Context2D) {
 	})
 }
 
-func ToLocal(m TextMeasurer, path TreePath, v vec2.Vec2) vec2.Vec2 {
+func ToLocal(m TextMeasurer, path WidgetPath, v vec2.Vec2) vec2.Vec2 {
 	return matrix.Apply(matrix.Invert(combineTransforms(m, path)), v)
 }
 
-func combineTransforms(m TextMeasurer, path TreePath) matrix.Matrix {
+func combineTransforms(m TextMeasurer, path WidgetPath) matrix.Matrix {
 	combined := matrix.Identity()
 	for i := 0; i < len(path); i++ {
 		w := path[i]

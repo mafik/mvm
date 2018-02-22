@@ -47,15 +47,6 @@ function clip() { ctx.clip(); }
 
 var eventSocket = undefined;
 var syncSocket = undefined;
-var binds = [
-  {"html": "onmousedown", "mvm": "MouseDown", "x": "clientX", "y": "clientY", "button": "button"},
-  {"html": "onmousemove", "mvm": "MouseMove", "x": "clientX", "y": "clientY"},
-  {"html": "onmouseup",   "mvm": "MouseUp",   "x": "clientX", "y": "clientY", "button": "button"},
-  {"html": "onwheel",     "mvm": "Wheel",     "x": "deltaX",  "y": "deltaY"},
-  {"html": "onkeydown",   "mvm": "KeyDown",   "code": "code", "key": "key"},
-  {"html": "onkeyup",     "mvm": "KeyUp",     "code": "code", "key": "key"},
-  {"html": "oncontextmenu"},
-];
 
 var lastData;
 var lastMsg;
@@ -86,6 +77,9 @@ function RequestRendering() {
 }
 
 function Reconnect() {
+  canvas.width = innerWidth;
+  canvas.height = innerHeight;
+  ctx.font = '20px Iosevka';
   ctx.fillStyle = "#ddd";
   ctx.fillRect(0,0,canvas.width, canvas.height);
   ctx.fillStyle = "#000";
@@ -113,35 +107,70 @@ function WindowResize(e) {
   canvas.width = innerWidth;
   canvas.height = innerHeight;
   ctx.font = '20px Iosevka';
-  RequestRendering();
 };
 
-function Bind(bind) {
-  window[bind.html] = function(e) {
-    if (typeof bind.mvm !== 'undefined') {
-      var o = { "type": bind.mvm };
-      for (var key in bind) {
-	if (key == "html" || key == "mvm") continue;
-	o[key] = e[bind[key]];
-      }
-      eventSocket.send(JSON.stringify(o));
+function CopyProperties(type, properties) {
+  return function(e) {
+	  var o = { "type": type };
+	  for (var key in properties) {
+	    o[key] = e[properties[key]];
+	  }
+	  eventSocket.send(JSON.stringify(o));
+	  e.preventDefault();
+	  return false;
+  };
+}
+
+function Touch(type) {
+  var properties = {"x": "clientX", "y": "clientY", "id": "identifier"};
+  return function(e) {
+	  var o = { "type": type, "changed": [] };
+    for (var i = 0; i < e.changedTouches.length; ++i) {
+      var t = {};
+	    for (var key in properties) {
+	      t[key] = e.changedTouches[i][properties[key]];
+	    }
+      o.changed.push(t);
     }
-    e.preventDefault();
-    return true;
-  }
+	  eventSocket.send(JSON.stringify(o));
+	  e.preventDefault();
+	  return false;
+  };
+}
+
+function Ignore(e) {
+  e.preventDefault();
+  return false;
+}
+
+var binds = {
+  "mousedown":   CopyProperties("MouseDown", {"x": "clientX", "y": "clientY", "button": "button"}),
+  "mousemove":   CopyProperties("MouseMove", {"x": "clientX", "y": "clientY"}),
+  "mouseup":     CopyProperties("MouseUp", {"x": "clientX", "y": "clientY", "button": "button"}),
+  "wheel":       CopyProperties("Wheel", {"x": "deltaX",  "y": "deltaY"}),
+  "keydown":     CopyProperties("KeyDown", {"code": "code", "key": "key"}),
+  "keyup":       CopyProperties("KeyUp", {"code": "code", "key": "key"}),
+  "touchstart":  Touch("TouchStart"),
+  "touchend":    Touch("TouchEnd"),
+  "touchmove":   Touch("TouchMove"),
+  "contextmenu": Ignore,
+  "resize":      WindowResize,
 };
 
 function EventOpen(e) {
   eventSocket.onerror = undefined;
-  window.onresize = WindowResize;
-  window.onresize();
-  binds.forEach(Bind);
+  for (var eventtype in binds) {  
+    window.addEventListener(eventtype, binds[eventtype], false);
+  }
+  WindowResize();
+  RequestRendering();
   eventSocket.onclose = EventClose;
 };
 
 function EventClose() {
-  window.onresize = undefined;
-  binds.forEach(function(bind) { window[bind.html] = undefined; });
+  for (var eventtype in binds) {  
+    window.removeEventListener(eventtype, binds[eventtype], false);
+  }
   Reconnect();
 };
 

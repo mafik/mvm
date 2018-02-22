@@ -13,10 +13,12 @@ type Client interface {
 }
 
 type ClientUI struct {
-	Client  Client
-	editing map[ui.Editable]bool
-	focus   *Shell
-	size    vec2.Vec2
+	Client    Client
+	editing   map[ui.Editable]bool
+	focus     *Shell
+	size      vec2.Vec2
+	Touches   map[int]*ui.Touch
+	MenuLayer ui.MenuLayer
 }
 
 var clients map[Client]*ClientUI = make(map[Client]*ClientUI)
@@ -25,7 +27,7 @@ func MakeClientUI(c Client) *ClientUI {
 	if ui, ok := clients[c]; ok {
 		return ui
 	}
-	ui := ClientUI{c, make(map[ui.Editable]bool), TheVM.root, vec2.Vec2{0, 0}}
+	ui := ClientUI{c, make(map[ui.Editable]bool), TheVM.root, vec2.Vec2{0, 0}, make(map[int]*ui.Touch), ui.MakeMenuLayer()}
 	clients[c] = &ui
 	return &ui
 }
@@ -41,6 +43,10 @@ func (c *ClientUI) ToggleEditing(i ui.Editable) {
 func (c *ClientUI) IsEditing(i ui.Editable) bool {
 	_, found := c.editing[i]
 	return found
+}
+
+func (c *ClientUI) GetMenuLayer() *ui.MenuLayer {
+	return &c.MenuLayer
 }
 
 func (c *ClientUI) Focus() *Shell {
@@ -91,6 +97,7 @@ func (c *ClientUI) Children() (children []interface{}) {
 	if graphic, ok := c.focus.object.(GraphicObject); ok {
 		children = append(children, graphic.MakeWidget(c.focus))
 	}
+	children = append(children, &c.MenuLayer)
 	return
 }
 

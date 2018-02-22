@@ -29,9 +29,6 @@ func ProcessEvent(e Event) {
 		if err != nil {
 			fmt.Println(err)
 		}
-		return
-	}
-	switch e.Type {
 	case "ContextMenu":
 	case "Finished":
 		s := e.Shell
@@ -44,7 +41,7 @@ func ProcessEvent(e Event) {
 		var ignore ui.TouchContext
 		Quit{}.Activate(ignore)
 	case "Size":
-		clientUI.size = vec2.Vec2{float64(e.Width), float64(e.Height)}
+		clientUI.size = vec2.Vec2{e.Width, e.Height}
 	case "MouseMove":
 		Pointer.Move(clientUI, vec2.Vec2{e.X, e.Y})
 	case "MouseDown":
@@ -52,23 +49,26 @@ func ProcessEvent(e Event) {
 	case "KeyDown":
 		Pointer.StartAction(clientUI, clientUI, e.Code, e.Key)
 	case "KeyUp":
-		Pointer.EndAction(clientUI, e.Code)
+		Pointer.EndAction(clientUI)
 	case "Wheel":
 		Pointer.Wheel = e.Y
 		Pointer.StartAction(clientUI, clientUI, "Wheel", "Wheel")
-		Pointer.EndAction(clientUI, "Wheel")
-		/*
-			focus := clientUI.focus
-			widget := focus.object.MakeWidget(focus)
-			path := ui.TreePath{clientUI, widget}
-			transform := &focus.object.(*Blueprint).transform
-			a := ui.ToLocal(clientUI, path, Pointer.Curr)
-			alpha := math.Exp(-e.Y / 200)
-			transform.Scale(alpha)
-			b := ui.ToLocal(clientUI, path, Pointer.Curr)
-			fix := vec2.Sub(b, a)
-			*transform = matrix.Multiply(matrix.Translate(fix), *transform) // apply translation before scaling
-		*/
+		Pointer.EndAction(clientUI)
+	case "TouchStart":
+		for _, t := range e.Changed {
+			clientUI.Touches[t.Id] = ui.MakeTouch(vec2.Vec2{t.X, t.Y})
+			clientUI.Touches[t.Id].OpenMenu(clientUI, clientUI)
+		}
+	case "TouchMove":
+		for _, t := range e.Changed {
+			clientUI.Touches[t.Id].Move(clientUI, vec2.Vec2{t.X, t.Y})
+		}
+	case "TouchEnd":
+		for _, t := range e.Changed {
+			clientUI.Touches[t.Id].EndAction(clientUI)
+			delete(clientUI.Touches, t.Id)
+		}
+
 	default:
 		fmt.Printf("Unknown message: %s\n", e.Type)
 	}
@@ -137,17 +137,23 @@ func (s *Shell) Run(events chan Event) {
 
 var tasks chan *Shell = make(chan *Shell, 100)
 
+type EventTouch struct {
+	X, Y float64
+	Id   int
+}
+
 type Event struct {
 	Type          string
 	Width, Height float64
 	X, Y          float64
 	Code          string
 	Key           string
+	Changed       []EventTouch
 	Shell         *Shell
 	Client        Client
 }
 
-var Pointer = ui.MakeTouch()
+var Pointer = ui.MakeTouch(vec2.Vec2{0, 0})
 
 /*
 func LinkDist(p vec2.Vec2, link *Link) float64 {
@@ -224,8 +230,8 @@ Goffi integration TODOs:
 
 
 TODO:
+- remove TouchContext & actionContext - put Action and TreePath in Touch
 - delete FrameElement if it's not pointing anywhere
-- fix parameter renaming
 - display number of blueprint instances
 - blueprint renaming
 

@@ -6,7 +6,6 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/cookieo9/goffi/fcall"
 	"github.com/mafik/mvm/ui"
 	"github.com/mafik/mvm/vec2"
 )
@@ -123,33 +122,33 @@ func (ExecType) Run(args Args) {
 	args.Get("stdout").object.(*Text).Bytes = out
 }
 
-type CType struct{ value fcall.Type }
+type CType struct{ value int }
 
 func (ctype CType) Name() string {
 	switch ctype.value {
-	case fcall.VOID:
+	case 0:
 		return "ctype:void"
-	case fcall.UINT8:
+	case 1:
 		return "ctype:uint8"
-	case fcall.UINT16:
+	case 2:
 		return "ctype:uint16"
-	case fcall.UINT32:
+	case 3:
 		return "ctype:uint32"
-	case fcall.UINT64:
+	case 4:
 		return "ctype:uint64"
-	case fcall.SINT8:
+	case 5:
 		return "ctype:int8"
-	case fcall.SINT16:
+	case 6:
 		return "ctype:int16"
-	case fcall.SINT32:
+	case 7:
 		return "ctype:int32"
-	case fcall.SINT64:
+	case 8:
 		return "ctype:int64"
-	case fcall.FLOAT:
+	case 9:
 		return "ctype:float"
-	case fcall.DOUBLE:
+	case 10:
 		return "ctype:double"
-	case fcall.POINTER:
+	case 11:
 		return "ctype:pointer"
 	default:
 		return "ctype:???"
@@ -159,18 +158,18 @@ func (ctype CType) Name() string {
 type CTypes []CType
 
 var CTypesArray CTypes = CTypes{
-	CType{value: fcall.VOID},
-	CType{value: fcall.UINT8},
-	CType{value: fcall.UINT16},
-	CType{value: fcall.UINT32},
-	CType{value: fcall.UINT64},
-	CType{value: fcall.SINT8},
-	CType{value: fcall.SINT16},
-	CType{value: fcall.SINT32},
-	CType{value: fcall.SINT64},
-	CType{value: fcall.FLOAT},
-	CType{value: fcall.DOUBLE},
-	CType{value: fcall.POINTER},
+	CType{value: 0},
+	CType{value: 1},
+	CType{value: 2},
+	CType{value: 3},
+	CType{value: 4},
+	CType{value: 5},
+	CType{value: 6},
+	CType{value: 7},
+	CType{value: 8},
+	CType{value: 9},
+	CType{value: 10},
+	CType{value: 11},
 }
 
 func (CTypes) Name() string { return "C types" }
@@ -225,15 +224,15 @@ var CStringParameters []Parameter = []Parameter{
 func (CString) Name() string            { return "CString" }
 func (CString) Parameters() []Parameter { return CStringParameters }
 func (CString) Run(args Args) {
-	s := string(args.Get("s").object.(*Text).Bytes)
-	ptr := fcall.CString(s)
+	//s := string(args.Get("s").object.(*Text).Bytes)
+	var ptr uintptr = 0 // fcall.CString(s)
 	shell := MakeShell(nil, nil)
 	shell.object = Ptr(ptr)
 	args.Set("result", shell)
 }
 
 type Function struct {
-	f      fcall.Function
+	//f      fcall.Function
 	name   string
 	rtype  CType
 	atypes []CType
@@ -253,10 +252,10 @@ func (f *Function) Run(args Args) {
 		farg := args.Get(fmt.Sprint(i)).object.(Wrapper).Unwrap()
 		fargs = append(fargs, farg)
 	}
-	ret := f.f(fargs).(Object)
-	shell := MakeShell(nil, nil)
-	shell.object = ret
-	args.Set("ret", shell)
+	//ret := f.f(fargs).(Object)
+	//shell := MakeShell(nil, nil)
+	//shell.object = ret
+	//args.Set("ret", shell)
 }
 
 type GetFunction struct{}
@@ -271,6 +270,7 @@ var GetFunctionParameters []Parameter = []Parameter{
 func (GetFunction) Name() string            { return "GetFunction" }
 func (GetFunction) Parameters() []Parameter { return GetFunctionParameters }
 func (GetFunction) Run(args Args) {
+	/*
 	name := string(args.Get("name").object.(*Text).Bytes)
 	rtype := args.Get("rtype").object.(CType)
 	atype := args.Get("atypes").object.(CType)
@@ -281,6 +281,7 @@ func (GetFunction) Run(args Args) {
 	shell := MakeShell(nil, nil)
 	shell.object = &Function{f, name, rtype, []CType{atype}}
 	args.Set("result", shell)
+	*/
 }
 
 var Gobs []Gob = []Gob{
@@ -296,7 +297,7 @@ var Objects []Object = []Object{
 	CTypesArray,
 	CString{},
 	GetFunction{},
-	&Function{nil, "fn", CType{fcall.VOID}, nil},
+	&Function{"fn", CType{0}, nil},
 }
 
 var TheVM *VM = &VM{}

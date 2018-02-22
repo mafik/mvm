@@ -18,7 +18,7 @@ func (r Raise) Activate(ctx ui.TouchContext) ui.Action {
 	var newPos vec2.Vec2
 	f := r.Frame
 	oldB := f.blueprint
-	ctx.AtTopBlueprint().Query(func(path ui.TreePath, pos vec2.Vec2) ui.WalkAction {
+	ctx.AtTopBlueprint().Query(func(path ui.WidgetPath, pos vec2.Vec2) ui.WalkAction {
 		last := path[len(path)-1]
 		bw, ok := last.(BlueprintWidget)
 		if !ok {
@@ -88,7 +88,7 @@ func (Lower) Keycode() string { return "KeyB" }
 func (l Lower) Activate(ctx ui.TouchContext) ui.Action {
 	var top *BlueprintWidget
 	mine := false
-	ctx.AtTopBlueprint().Query(func(path ui.TreePath, pos vec2.Vec2) ui.WalkAction {
+	ctx.AtTopBlueprint().Query(func(path ui.WidgetPath, pos vec2.Vec2) ui.WalkAction {
 		last := path[len(path)-1]
 		if bw, ok := last.(BlueprintWidget); ok {
 			//fmt.Println("Detected blueprint widget!")
@@ -434,7 +434,7 @@ func (d *ParameterDragging) Move(t ui.TouchContext) ui.Action {
 }
 func (d *ParameterDragging) End(ctx ui.TouchContext) {
 	dummy := d.FrameElement().Target.Frame()
-	ctx.At(IsBlueprintWidget).Query(func(path ui.TreePath, p vec2.Vec2) ui.WalkAction {
+	ctx.At(IsBlueprintWidget).Query(func(path ui.WidgetPath, p vec2.Vec2) ui.WalkAction {
 		elem := path[len(path)-1]
 		elementWidget, ok := elem.(FrameElementCircle)
 		if ok {

@@ -4,7 +4,7 @@ type Parent interface {
 	Children() []interface{} // stable back-to-front order
 }
 
-type TreePath []interface{} // root-to-child
+type WidgetPath []interface{} // root-to-child
 
 type WalkAction int
 
@@ -14,12 +14,12 @@ const (
 	Return
 )
 
-type EnterCallback func(TreePath) WalkAction
-type ExitCallback func(TreePath)
+type EnterCallback func(WidgetPath) WalkAction
+type ExitCallback func(WidgetPath)
 
-func NoopExit(TreePath) {}
+func NoopExit(WidgetPath) {}
 
-func WalkWithin(path TreePath, enter EnterCallback, exit ExitCallback) WalkAction {
+func WalkWithin(path WidgetPath, enter EnterCallback, exit ExitCallback) WalkAction {
 	if exit == nil {
 		exit = NoopExit
 	}
